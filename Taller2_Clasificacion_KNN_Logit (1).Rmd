@@ -34,6 +34,8 @@ library(pROC)
 library(scales)
 library(reactable)
 library(DT)
+library(class)
+library(FNN)
 pal <- c(mauve = "#dabfff", periwinkle = "#907ad6", grape = "#4f518c",
          indigo = "#2c2a4a", lake = "#7fdeff")
 col_bajo   <- pal[["mauve"]]
@@ -88,15 +90,14 @@ POR HACER 1
 
 ## Variable dependiente
 
-POR HACER 2
-Para el periodo de Enero de 2024, el SMMLV oficial fijado por el Gobierno Nacional es de **$1.300.000** COP (Decreto 2292 de 2023). Se fija la categoría "Alto" como clase positiva, de modo que la Sensibilidad mide la capacidad de los modelos para identificar correctamente a los trabajadores que superan el salario mínimo.
+POR HACER 2 Para el periodo de Enero de 2024, el SMMLV oficial fijado por el Gobierno Nacional es de **\$1.300.000** COP (Decreto 2292 de 2023). Se fija la categoría "Alto" como clase positiva, de modo que la Sensibilidad mide la capacidad de los modelos para identificar correctamente a los trabajadores que superan el salario mínimo.
 
 ::: {.leyenda .tab}
 **Tabla 1.** Equivalencia entre los códigos del DANE y los nombres de las variables
 :::
 
 | Variable | Código DANE | Tipo | Categoría / unidad |
-|---|---|---|---|
+|------------------|------------------|------------------|------------------|
 | Ingreso laboral `inglabo` | `INGLABO` | Numérica | Pesos mensuales |
 | Clase de ingreso | `Y_ingreso` | Categórica | Alto (1) si supera el SMMLV, Bajo (0) en otro caso |
 
@@ -113,21 +114,21 @@ POR HACER 3
 :::
 
 | Nombre en la base de datos | Código DANE | Tipo | Categoría / unidad |
-|---|---|---|---|
+|------------------|------------------|------------------|------------------|
 | Sexo `sexo_f` | `P3271` | Categórica | 1 = Hombre, 2 = Mujer |
 | Edad `edad` | `P6040` | Numérica | Años cumplidos |
 | Edad al cuadrado `edad2` | `P6040` | Numérica | Años cumplidos al cuadrado |
 | Nivel educativo `educ_f` | `P3042` | Categórica | 1 = Primaria, 2 = Secundaria, 3 = Técnica/Tecnología, 4 = Universitaria, 5 = Posgrado |
-| Horas trabajadas `horas` | `P6800` | Horas por semana |
-| Antigüedad (meses) `antig` | `P6426` | Meses en el trabajo actual |
+| Horas trabajadas `horas` | `P6800` | Horas por semana |  |
+| Antigüedad (meses) `antig` | `P6426` | Meses en el trabajo actual |  |
 | Tipo de empleado `tipo_emp` | `P6430` | Categórica | 1 = Empresa particular, 2 = Gobierno, 3 = Doméstico, 4 = Cuenta propia, 5 = Patrón, 6–8 = Jornalero / otros |
-
 
 ::: {.fuente .tab}
 Fuente: Elaboración propia con base en la GEIH del DANE, enero de 2024.
 :::
 
 ## Depuración adicional
+
 ```{r datos}
 archivo <- "Base_GEIH_Taller2_limpia1.xlsx"
 
@@ -140,6 +141,7 @@ raw <- read_excel(archivo)
 
 n_raw <- nrow(raw)
 ```
+
 ```{r limpieza}
 
 SMMLV <- 1300000
@@ -246,11 +248,9 @@ prev <- mean(datos$y == "Alto")
 
 ```
 
-
 ## Base de datos
 
-POR HACER 4
-La base proviene de la GEIH publicada por el DANE ([microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata)). La versión depurada entregada contiene **POR AVERIGUAR**.
+POR HACER 4 La base proviene de la GEIH publicada por el DANE ([microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata)). La versión depurada entregada contiene **POR AVERIGUAR**.
 
 ```{r limpieza-previa, ref.label="limpieza", include=FALSE}
 ```
@@ -270,60 +270,22 @@ tabla_base <- datos %>%
   )
 ```
 
-POR HACER 5
-La base depurada tiene **26,408 observaciones** y **9 variables**, correspondientes a trabajadores ocupados con ingreso laboral positivo. Los códigos originales del DANE se reemplazaron por los nombres de sus categorías (por ejemplo, `P3271 = 1` aparece como "Hombre"). La tabla permite filtrar por columna, cambiar el número de filas por página y navegar entre páginas.
+POR HACER 5 La base depurada tiene **26,408 observaciones** y **9 variables**, correspondientes a trabajadores ocupados con ingreso laboral positivo. Los códigos originales del DANE se reemplazaron por los nombres de sus categorías (por ejemplo, `P3271 = 1` aparece como "Hombre"). La tabla permite filtrar por columna, cambiar el número de filas por página y navegar entre páginas.
 
 ::: {.leyenda .tab}
 **Tabla 3.** Base de datos utilizada en el estudio
 :::
 
-```{r tabla-base}
-reactable(
-  tabla_base,
-  filterable = TRUE,
-  striped = TRUE,
-  highlight = TRUE,
-  defaultPageSize = 15,
-  showPageSizeOptions = TRUE,
-  pageSizeOptions = c(10, 15, 25, 50, 100),
-  paginationType = "numbers",
-  defaultColDef = colDef(align = "center", minWidth = 150),
-  columns = list(
-    `Ingreso laboral` = colDef(
-      format = colFormat(prefix = "$ ", separators = TRUE, digits = 0, locales = "es-CO"),
-      minWidth = 190),
-    `Log. ingreso` = colDef(format = colFormat(digits = 2, locales = "es-CO")),
-    `Nivel educativo` = colDef(minWidth = 210),
-    `Tipo de empleo` = colDef(minWidth = 290),
-    `Antigüedad (meses)` = colDef(minWidth = 190)
-  ),
-  theme = reactableTheme(
-    color = "#2c2a4a",
-    backgroundColor = "#ffffff",
-    borderColor = "#e6dafa",
-    stripedColor = "#faf6ff",
-    highlightColor = "#f1e8ff",
-    cellPadding = "10px 12px",
-    style = list(fontFamily = "Spectral, Georgia, serif", fontSize = "var(--fs)"),
-    headerStyle = list(background = "#4f518c", color = "#ffffff", borderColor = "#4f518c"),
-    filterInputStyle = list(background = "#ffffff", borderColor = "#dabfff"),
-    inputStyle = list(borderColor = "#dabfff"),
-    paginationStyle = list(borderColor = "#e6dafa"),
-    pageButtonHoverStyle = list(backgroundColor = "#dabfff"),
-    pageButtonActiveStyle = list(backgroundColor = "#907ad6", color = "#ffffff"),
-    pageButtonCurrentStyle = list(backgroundColor = "#2c2a4a", color = "#7fdeff")
-  )
-)
-```
+\|`` {r tabla-base} reactable(   tabla_base,   filterable = TRUE,   striped = TRUE,   highlight = TRUE,   defaultPageSize = 15,   showPageSizeOptions = TRUE,   pageSizeOptions = c(10, 15, 25, 50, 100),   paginationType = "numbers",   defaultColDef = colDef(align = "center", minWidth = 150),   columns = list(     `Ingreso laboral` = colDef(       format = colFormat(prefix = "$ ", separators = TRUE, digits = 0, locales = "es-CO"),       minWidth = 190),     `Log. ingreso` = colDef(format = colFormat(digits = 2, locales = "es-CO")),     `Nivel educativo` = colDef(minWidth = 210),     `Tipo de empleo` = colDef(minWidth = 290),     `Antigüedad (meses)` = colDef(minWidth = 190)   ),   theme = reactableTheme(     color = "#2c2a4a",     backgroundColor = "#ffffff",     borderColor = "#e6dafa",     stripedColor = "#faf6ff",     highlightColor = "#f1e8ff",     cellPadding = "10px 12px",     style = list(fontFamily = "Spectral, Georgia, serif", fontSize = "var(--fs)"),     headerStyle = list(background = "#4f518c", color = "#ffffff", borderColor = "#4f518c"),     filterInputStyle = list(background = "#ffffff", borderColor = "#dabfff"),     inputStyle = list(borderColor = "#dabfff"),     paginationStyle = list(borderColor = "#e6dafa"),     pageButtonHoverStyle = list(backgroundColor = "#dabfff"),     pageButtonActiveStyle = list(backgroundColor = "#907ad6", color = "#ffffff"),     pageButtonCurrentStyle = list(backgroundColor = "#2c2a4a", color = "#7fdeff")   ) ) ``
 
 ::: {.fuente .tab}
 Fuente: Elaboración propia con base en la GEIH del DANE, enero de 2024.
 :::
 
-
 # Resultados Descritpivos
 
-## Análisis descriptivo de la varible dependiente 
+## Análisis descriptivo de la varible dependiente
+
 ```{r TABLA1_DISTRIBUCIOn_VARIABLE_Y}
 
 tabla_y <- datos %>%
@@ -735,9 +697,10 @@ DT::datatable(
 )
 ```
 
-## Relación con Ingreso Laboral 
+## Relación con Ingreso Laboral
 
 ### Distribución por grupos de edad
+
 ```{r grafico3_edad}
 
 if (!all(c("edad", "y") %in% names(datos))) {
@@ -864,6 +827,7 @@ grafico_edad
 ```
 
 ### Distribución de la antiguedad laboral
+
 ```{r grafico4_antig}
 
 if (!all(c("antig", "y") %in% names(datos))) {
@@ -1007,6 +971,7 @@ grafico_antig
 ```
 
 ### Distribución de las horas trabajadas semanalmente
+
 ```{r grafico5_horas_trab}
 
 if (!all(c("horas", "y") %in% names(datos))) {
@@ -1150,6 +1115,7 @@ grafico_horas_g5
 ```
 
 ## Variables categóricas
+
 ```{r preparacion_tablas_categoricas}
 
 educ5_desc <- factor(
@@ -1242,7 +1208,8 @@ mostrar_cat_desc <- function(tabla, titulo) {
 }
 ```
 
-### Nivel educativo 
+### Nivel educativo
+
 ```{r TABLA3_NIVEL_EDUCATIVO}
 
 tabla_educ_desc <- resumen_cat_desc(educ5_desc)
@@ -1510,6 +1477,7 @@ grafico_educ_g6
 ```
 
 ### Tipo de empleado
+
 ```{r TABLA4_TIPO_EMPLEADO}
 
 tabla_tipo_desc <- resumen_cat_desc(datos$tipo_emp)
@@ -1789,6 +1757,7 @@ grafico_tipo_g7
 ```
 
 ### Sexo
+
 ```{r TABLA5_SEXO}
 
 tabla_sexo_desc <- resumen_cat_desc(datos$sexo_f)
@@ -2042,8 +2011,8 @@ grafico_sexo_g8
 
 ```
 
-
 ### Zona de residencia
+
 ```{r TABLA6_ZONA_RESIDENCIA}
 tabla_zona_desc <- resumen_cat_desc(datos$zona_f)
 mostrar_cat_desc(
@@ -2329,6 +2298,7 @@ grafico_zona_g9
 ```
 
 ### Estado civil
+
 ```{r TABLA8_Estado_civil}
 
 tabla_estado_desc <- resumen_cat_desc(datos$est_civil_f)
@@ -2584,444 +2554,340 @@ grafico_estado_g10
 ```
 
 
+
 # Resultados del modelo
 
 ```{r verificar-vars}
-# ==============================================================================
-# 2. VERIFICACIÓN DE VARIABLES DEL MODELO
-# ==============================================================================
-
 vars_modelo <- c("edad", "edad2", "antig", "horas", "educ_f", "tipo_emp",
                  "sexo_f", "zona_f", "est_civil_f", "y")
-
-# Comprobar que no falte ninguna variable
 faltan <- setdiff(vars_modelo, names(datos))
-
-if (length(faltan) > 0) {
-  stop("Faltan estas columnas en 'datos': ", paste(faltan, collapse = ", "))
-} else {
-  message("¡Todas las variables requeridas están correctamente preparadas!")
-}
+if (length(faltan) > 0) stop("Faltan columnas en 'datos': ", paste(faltan, collapse = ", "))
 ```
 
-```{r split}
-# ==============================================================================
-# 1. PARTISIÓN ESTRATIFICADA DE DATOS (TRAIN / TEST)
-# ==============================================================================
+## Partición de los datos
 
+```{r split}
 set.seed(2025)
 idx   <- createDataPartition(datos$y, p = 0.70, list = FALSE)
 train <- datos[idx, ]  %>% as.data.frame()
 test  <- datos[-idx, ] %>% as.data.frame()
 
-# Tabla de resumen de observaciones y distribución por conjunto
 tibble(
   Conjunto = c("Entrenamiento", "Prueba"),
   Observaciones = c(nrow(train), nrow(test)),
   `Clase positiva (Alto)` = c(sum(train$y == "Alto"), sum(test$y == "Alto")),
   `% clase positiva` = percent(c(mean(train$y == "Alto"), mean(test$y == "Alto")), accuracy = 0.1)
 ) %>%
-  tabla(caption = "Distribución de Observaciones en la Partición de Datos",
+  tabla(caption = "Distribución de observaciones en la partición de datos",
         format.args = list(big.mark = "."))
-
 ```
 
-## Definición de la fórmula general del modelo
-
 ```{r formula}
-
 fml <- y ~ edad + edad2 + antig + horas + educ_f + tipo_emp +
   sexo_f + zona_f + est_civil_f
 ```
 
-```{r knn-class-prep}
-# ==============================================================================
-# 3. PREPARACIÓN DE MATRICES DUMMY Y ESTANDARIZACIÓN Z-SCORE
-# ==============================================================================
+```{r funciones}
+# Métricas de un modelo a partir de predicciones de clase
+metricas_cm <- function(pred, real, modelo = "", auc_val = NA) {
+  cm <- confusionMatrix(pred, real, positive = "Alto")
+  tibble(
+    Modelo              = modelo,
+    Exactitud           = cm$overall[["Accuracy"]],
+    Sensibilidad        = cm$byClass[["Sensitivity"]],
+    Especificidad       = cm$byClass[["Specificity"]],
+    Precisión           = cm$byClass[["Pos Pred Value"]],
+    `Balanced Accuracy` = cm$byClass[["Balanced Accuracy"]],
+    Kappa               = cm$overall[["Kappa"]],
+    AUC                 = auc_val
+  ) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 4)))
+}
 
+# Métricas a partir de probabilidades y un umbral
+
+evalua <- function(prob, real, umbral = 0.5, modelo = "", auc_val = NA) {
+  # Forzar a vectores numéricos/carácter atómicos simples
+  prob_num <- as.numeric(prob)
+  real_vec <- as.character(real)
+  
+  pred <- factor(if_else(prob_num >= umbral, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
+  ref  <- factor(real_vec, levels = c("Bajo", "Alto"))
+  
+  cm <- confusionMatrix(pred, ref, positive = "Alto")
+  
+  tibble(
+    Modelo              = modelo,
+    Exactitud           = as.numeric(cm$overall["Accuracy"]),
+    Sensibilidad        = as.numeric(cm$byClass["Sensitivity"]),
+    Especificidad       = as.numeric(cm$byClass["Specificity"]),
+    Precisión           = as.numeric(cm$byClass["Pos Pred Value"]),
+    `Balanced Accuracy` = as.numeric(cm$byClass["Balanced Accuracy"]),
+    Kappa               = as.numeric(cm$overall["Kappa"]),
+    AUC                 = as.numeric(auc_val)
+  ) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 4)))
+}
+```
+
+## Modelo KNN
+
+```{r knn-class-prep}
 library(class)
+library(FNN)
 
 f_x <- ~ edad + edad2 + antig + horas + educ_f + tipo_emp +
   sexo_f + zona_f + est_civil_f
 
-# Matriz de diseño (sin intercepto)
 X_train <- model.matrix(f_x, data = train)[, -1]
 X_test  <- model.matrix(f_x, data = test)[, -1]
 
-# Se eliminan columnas constantes en entrenamiento (desviación estándar igual a 0)
+# Columnas constantes en entrenamiento
 const   <- apply(X_train, 2, sd) == 0
 X_train <- X_train[, !const, drop = FALSE]
 X_test  <- X_test[,  !const, drop = FALSE]
 
-# Estandarización Z-score de variables numéricas usando parámetros del entrenamiento
+# Z-score de las numéricas con parámetros del entrenamiento
 vars_num <- c("edad", "edad2", "antig", "horas")
 medias   <- colMeans(X_train[, vars_num])
 desv     <- apply(X_train[, vars_num], 2, sd)
-
 X_train[, vars_num] <- scale(X_train[, vars_num], center = medias, scale = desv)
 X_test[,  vars_num] <- scale(X_test[,  vars_num], center = medias, scale = desv)
 ```
 
-```{r knn-class-loop, cache=TRUE}
-# ==============================================================================
-# 4. EVALUACIÓN DE VECINOS K (1 A 100) Y BÚSQUEDA DEL K ÓPTIMO
-# ==============================================================================
-
+```{r knn-class-cv, cache=TRUE}
+# k impares de 1 a 101, validación cruzada estratificada de 5 particiones
 set.seed(2025)
-ks    <- 1:100
-acc_k <- numeric(length(ks))
+ks      <- seq(1, 101, by = 2)
+folds   <- createFolds(train$y, k = 5, list = TRUE, returnTrain = FALSE)
+y_alto  <- train$y == "Alto"
 
-for (i in seq_along(ks)) {
-  pred_i   <- knn(train = X_train, test = X_test, cl = train$y, k = ks[i])
-  acc_k[i] <- mean(pred_i == test$y)
-}
+acc_folds <- sapply(folds, function(i_val) {
+  nn     <- get.knnx(data = X_train[-i_val, , drop = FALSE],
+                     query = X_train[i_val, , drop = FALSE],
+                     k = max(ks), algorithm = "brute")
+  y_tr   <- y_alto[-i_val]
+  votos  <- t(apply(nn$nn.index, 1, function(i) cumsum(y_tr[i])))
+  sapply(ks, function(k) mean((votos[, k] > k / 2) == y_alto[i_val]))
+})
 
-res_class   <- tibble(k = ks, Accuracy = acc_k)
+res_class   <- tibble(k = ks, Accuracy = rowMeans(acc_folds))
 k_opt_class <- res_class$k[which.max(res_class$Accuracy)]
 acc_opt     <- max(res_class$Accuracy)
 ```
 
 ```{r g-knn-class}
-# ==============================================================================
-# 5. GRÁFICO INTERACTIVO DE ACCURACY VS. K
-# ==============================================================================
-
 res_class <- res_class %>%
-  mutate(tooltip = paste0("k = ", k, "<br>Accuracy: ", round(Accuracy, 4)))
+  mutate(tooltip = paste0("k = ", k, "<br>Accuracy (CV): ", round(Accuracy, 4)))
 
 p_acc <- ggplot(res_class, aes(k, Accuracy, text = tooltip, group = 1)) +
   geom_line(colour = pal[["lake"]], linewidth = 0.8) +
   geom_point(colour = pal[["lake"]], size = 1.6) +
   geom_vline(xintercept = k_opt_class, linetype = "dashed", colour = pal[["indigo"]]) +
-  geom_point(data = filter(res_class, k == k_opt_class), colour = pal[["periwinkle"]], size = 4) +
-  labs(title = paste0("Accuracy vs. k (KNN class) · k óptimo = ", k_opt_class),
-       x = "Número de vecinos (k)", y = "Accuracy en la muestra de prueba")
+  geom_point(data = filter(res_class, k == k_opt_class),
+             colour = pal[["periwinkle"]], size = 4) +
+  labs(title = paste0("Exactitud vs. k (CV 5 particiones) · k óptimo = ", k_opt_class),
+       x = "Número de vecinos (k)", y = "Exactitud promedio en validación cruzada")
 
 interactivo(p_acc, tooltip = "text")
 ```
 
 ```{r knn-class-final}
-# ==============================================================================
-# 6. EVALUACIÓN FINAL DEL MODELO KNN CON K ÓPTIMO
-# ==============================================================================
+# Evaluación única sobre el conjunto de prueba
+pred_knn <- knn(train = X_train, test = X_test, cl = train$y,
+                k = k_opt_class, prob = TRUE)
 
-# Predicción final con el k óptimo
-pred_knn <- knn(train = X_train, test = X_test, cl = train$y, k = k_opt_class, prob = TRUE)
+# EXTRACCIÓN SEGURA Y VECTORIZADA DE LA PROBABILIDAD DE "ALTO"
+prob_win <- as.numeric(attr(pred_knn, "prob"))
+pred_vec <- as.character(pred_knn)
+p_knn    <- as.numeric(if_else(pred_vec == "Alto", prob_win, 1 - prob_win))
 
-# Guardar probabilidades de la clase positiva "Alto" para la matriz de confusión y ROC
-prob_knn <- attr(pred_knn, "prob")
-p_knn    <- if_else(pred_knn == "Alto", prob_knn, 1 - prob_knn)
+roc_knn <- roc(test$y, p_knn, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
+auc_knn <- as.numeric(auc(roc_knn))
 
-# Matriz de confusión
-cm_knn <- confusionMatrix(pred_knn, test$y, positive = "Alto")
-
-# Función generadora de la tabla de métricas del modelo KNN
-metricas_cm <- function(pred, real, modelo = "", auc_val = NA) {
-  cm <- confusionMatrix(pred, real, positive = "Alto")
-  tibble(
-    Modelo             = modelo,
-    Exactitud          = cm$overall["Accuracy"],
-    Sensibilidad       = cm$byClass["Sensitivity"],
-    Especificidad      = cm$byClass["Specificity"],
-    Precisión          = cm$byClass["Pos Pred Value"],
-    `Balanced Accuracy` = cm$byClass["Balanced Accuracy"],
-    Kappa              = cm$overall["Kappa"],
-    AUC                = auc_val
-  ) %>%
-    mutate(across(where(is.numeric), ~ round(.x, 4)))
-}
-
-# Cálculo del AUC para KNN
-roc_knn_obj <- roc(test$y, p_knn, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
-auc_knn_val <- as.numeric(auc(roc_knn_obj))
-
-# Tabla con el resumen completo de métricas
-tabla_knn_resumen <- metricas_cm(pred_knn, test$y, modelo = paste0("KNN (k = ", k_opt_class, ")"), auc_val = auc_knn_val)
-
-tabla(tabla_knn_resumen, caption = "Métricas de Evaluación del Modelo KNN con k Óptimo",
+tabla_knn_resumen <- metricas_cm(pred_knn, test$y,
+                                 modelo = paste0("KNN (k = ", k_opt_class, ")"),
+                                 auc_val = auc_knn)
+tabla(tabla_knn_resumen, caption = "Métricas de evaluación del modelo KNN con k óptimo",
       format.args = list(decimal.mark = ","))
 ```
 
+## Modelo Logit
+
 ```{r logit-modelo}
-# ==============================================================================
-# 1. PREPARACIÓN Y AJUSTE DEL MODELO LOGIT COMPLETO
-# ==============================================================================
+logit <- glm(fml, data = train, family = binomial)
 
-# Forzamos a que 'train' y 'test' sean data.frame explícitamente
-train_df <- as.data.frame(train)
-test_df  <- as.data.frame(test)
+coef_tab <- summary(logit)$coefficients
+ic       <- confint.default(logit)
 
-# Creación de variables categóricas etiquetadas para el modelo
-train_df <- train_df %>%
-  mutate(
-    sexo_f = factor(P3271, levels = c(1, 2), labels = c("Hombre", "Mujer")),
-    zona_f = factor(CLASE, levels = c(1, 2), labels = c("Urbano", "Rural")),
-    est_civil_f = factor(P6070, levels = 1:6, labels = c(
-      "No está casado(a) y vive en pareja hace menos de 2 años",
-      "No está casado(a) y vive en pareja hace 2 años o más",
-      "Está casado(a)",
-      "Está separado(a) o divorciado(a)",
-      "Está viudo(a)",
-      "Está soltero(a)"
-    ))
-  )
-
-test_df <- test_df %>%
-  mutate(
-    sexo_f = factor(P3271, levels = c(1, 2), labels = c("Hombre", "Mujer")),
-    zona_f = factor(CLASE, levels = c(1, 2), labels = c("Urbano", "Rural")),
-    est_civil_f = factor(P6070, levels = 1:6, labels = c(
-      "No está casado(a) y vive en pareja hace menos de 2 años",
-      "No está casado(a) y vive en pareja hace 2 años o más",
-      "Está casado(a)",
-      "Está separado(a) o divorciado(a)",
-      "Está viudo(a)",
-      "Está soltero(a)"
-    ))
-  )
-
-# Definición de la fórmula con tus 9 variables independientes
-fml_completa <- y ~ edad + edad2 + horas + antig + educ_f + tipo_emp + sexo_f + zona_f + est_civil_f
-
-# Ajuste del modelo de Regresión Logística
-logit <- glm(fml_completa, data = train_df, family = binomial)
-
-# Resumen de coeficientes e Intervalos de Confianza al 95%
-co <- summary(logit)$coefficients
-ci <- confint.default(logit)
-
-# Tabla 1: Coeficientes, Odds Ratios e Intervalos de Confianza
 tabla_logit_coef <- tibble(
-  Término      = rownames(co),
-  Coeficiente  = co[, 1],
-  `Odds ratio` = exp(co[, 1]),
-  `IC 95% inf` = exp(ci[, 1]),
-  `IC 95% sup` = exp(ci[, 2]),
-  `p-valor`    = co[, 4]
+  Término      = rownames(coef_tab),
+  Coeficiente  = coef_tab[, 1],
+  `Odds ratio` = exp(coef_tab[, 1]),
+  `IC 95% inf` = exp(ic[, 1]),
+  `IC 95% sup` = exp(ic[, 2]),
+  `p-valor`    = coef_tab[, 4]
 ) %>%
   mutate(across(where(is.numeric), ~ round(.x, 4)))
 
-# Presentación de la tabla con formato kable
-tabla(tabla_logit_coef, caption = "Tabla de Coeficientes y Odds Ratios del Modelo Logit Completo",
+tabla(tabla_logit_coef, caption = "Coeficientes y odds ratios del modelo Logit",
       format.args = list(decimal.mark = ","))
 ```
 
 ```{r logit-or-incrementos}
-# ==============================================================================
-# 2. ODDS RATIOS PARA INCREMENTOS PRACTICOS EN LAS VARIABLES
-# ==============================================================================
-
 b <- coef(logit)
 
 tabla_or_incrementos <- tibble(
-  Cambio = c(
-    "+10 años de Edad",
-    "+100 en Edad²",
-    "+10 horas semanales",
-    "+12 meses de Antigüedad",
-    "Ser Mujer (vs Hombre)",
-    "Zona Rural (vs Urbano)"
-  ),
+  Cambio = c("+10 años de edad", "+100 en edad²", "+10 horas semanales",
+             "+12 meses de antigüedad", "Ser mujer (vs. hombre)", "Zona rural (vs. urbana)"),
   `Odds Ratio` = round(exp(unname(c(
-    10 * b["edad"],
-    100 * b["edad2"],
-    10 * b["horas"],
-    12 * b["antig"],
-    b["sexo_fMujer"],
-    b["zona_fRural"]
+    10 * b["edad"], 100 * b["edad2"], 10 * b["horas"],
+    12 * b["antig"], b["sexo_fMujer"], b["zona_fRural"]
   ))), 3)
 )
 
-tabla(tabla_or_incrementos, caption = "Odds Ratios para Cambios Clave en las Variables Explicativas",
+tabla(tabla_or_incrementos, caption = "Odds ratios para cambios clave en las variables",
       format.args = list(decimal.mark = ","))
 ```
 
-```{r logit-roc-umbral}
-# ==============================================================================
-# 1. CÁLCULO DE PROBABILIDADES PREDICHAS Y CURVA ROC
-# ==============================================================================
-
-# Probabilidades predichas de la clase 'Alto' sobre el conjunto de prueba
-p_logit <- predict(logit, newdata = test_df, type = "response")
-
-# Curva ROC con pROC
-roc_logit <- roc(test_df$y, p_logit, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
+```{r logit-roc}
+# Asegurar que p_logit sea vector numérico atómico simple
+p_logit   <- as.numeric(predict(logit, newdata = test, type = "response"))
+roc_logit <- roc(test$y, p_logit, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
 auc_logit <- as.numeric(auc(roc_logit))
 
-# Umbral óptimo según el índice de Youden (maximiza Sensibilidad + Especificidad - 1)
-umbral_youden <- as.numeric(coords(roc_logit, x = "best", best.method = "youden", ret = "threshold"))
-
-# ==============================================================================
-# 2. GRÁFICO DE DESEMPEÑO SEGÚN EL UMBRAL DE DECISIÓN (CUTOFF)
-# ==============================================================================
-
-# Función para evaluar métricas a diferentes niveles de corte (cutoff)
-performa <- function(cutoff, prob, ref) {
-  predict <- factor(if_else(prob >= cutoff, "Alto", "Bajo"), levels = levels(ref))
-  conf <- confusionMatrix(predict, ref, positive = "Alto")
-  c(
-    Sensibilidad  = conf$byClass["Sensitivity"],
-    Exactitud     = conf$overall["Accuracy"],
-    Precisión     = conf$byClass["Pos Pred Value"],
-    Especificidad = conf$byClass["Specificity"]
-  )
-}
-
-# Rango de umbrales a evaluar (de 0.01 a 0.80)
-co <- seq(0.01, 0.80, length = 80)
-res_cutoff <- as.data.frame(t(sapply(co, performa, prob = p_logit, ref = test_df$y)))
-res_cutoff$Cutoff <- co
-
-# Gráfico interactivo con ggplotly
-p_cutoff <- res_cutoff %>%
-  pivot_longer(-Cutoff, names_to = "Métrica", values_to = "Valor") %>%
-  ggplot(aes(x = Cutoff, y = Valor, color = Métrica)) +
-  geom_line(linewidth = 1) +
-  geom_vline(xintercept = umbral_youden, linetype = "dashed", color = pal[["indigo"]]) +
-  scale_color_manual(values = c(
-    Sensibilidad  = pal[["grape"]],
-    Exactitud     = pal[["lake"]],
-    Precisión     = pal[["periwinkle"]],
-    Especificidad = pal[["mauve"]]
-  )) +
-  scale_y_continuous(limits = c(0, 1)) +
-  labs(
-    title = paste("Desempeño del Modelo Logit según el Umbral (Youden = ", round(umbral_youden, 3), ")"),
-    x = "Umbral de Decisión (Cutoff)",
-    y = "Valor de la Métrica"
-  )
-
-interactivo(p_cutoff, leyenda_abajo = TRUE)
+# Umbrales de Youden de cada modelo
+youden <- function(r) as.numeric(coords(r, x = "best", best.method = "youden",
+                                        ret = "threshold"))[1]
+umbral_youden_logit <- youden(roc_logit)
+umbral_youden_knn   <- youden(roc_knn)
+umbral_prev         <- mean(train$y == "Alto")
 ```
 
-```{r logit-metricas-tablas}
-# ==============================================================================
-# EVALUACIÓN CON UMBRAL ESTÁNDAR (0.5) Y UMBRAL ÓPTIMO (YOUDEN)
-# ==============================================================================
+## Desempeño según el umbral de decisión
 
-# Predicciones con umbral 0.5
-pred_logit_05 <- factor(if_else(p_logit >= 0.5, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
-cm_logit_05   <- confusionMatrix(pred_logit_05, test_df$y, positive = "Alto")
+```{r funcion-perf-ultra-rapida}
+# Función de rendimiento optimizada con operaciones matriciales súper rápidas
+perf_umbral_rapido <- function(cutoff, prob, ref_alto) {
+  pred_alto <- prob >= cutoff
+  
+  tp <- sum(pred_alto & ref_alto)
+  tn <- sum(!pred_alto & !ref_alto)
+  fp <- sum(pred_alto & !ref_alto)
+  fn <- sum(!pred_alto & ref_alto)
+  
+  sens <- if ((tp + fn) > 0) tp / (tp + fn) else 0
+  espec <- if ((tn + fp) > 0) tn / (tn + fp) else 0
+  prec <- if ((tp + fp) > 0) tp / (tp + fp) else 0
+  acc <- (tp + tn) / length(ref_alto)
+  
+  tibble(Cutoff = cutoff, Sensibilidad = sens, Exactitud = acc, Precisión = prec, Especificidad = espec)
+}
 
-# Predicciones con umbral óptimo de Youden
-pred_logit_youden <- factor(if_else(p_logit >= umbral_youden, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
-cm_logit_youden   <- confusionMatrix(pred_logit_youden, test_df$y, positive = "Alto")
+cortes <- seq(0.01, 0.80, length.out = 80)
+ref_es_alto <- test$y == "Alto"
+```
 
-# Tabla comparativa de métricas del Logit según el umbral
-tabla_eval_logit <- tibble(
-  `Umbral de Decisión` = c("Estándar (0,50)", paste0("Óptimo Youden (", round(umbral_youden, 3), ")")),
-  Exactitud            = c(cm_logit_05$overall["Accuracy"], cm_logit_youden$overall["Accuracy"]),
-  Sensibilidad         = c(cm_logit_05$byClass["Sensitivity"], cm_logit_youden$byClass["Sensitivity"]),
-  Especificidad        = c(cm_logit_05$byClass["Specificity"], cm_logit_youden$byClass["Specificity"]),
-  Precisión            = c(cm_logit_05$byClass["Pos Pred Value"], cm_logit_youden$byClass["Pos Pred Value"]),
-  `Balanced Accuracy`  = c(cm_logit_05$byClass["Balanced Accuracy"], cm_logit_youden$byClass["Balanced Accuracy"]),
-  Kappa                = c(cm_logit_05$overall["Kappa"], cm_logit_youden$overall["Kappa"]),
-  AUC                  = c(auc_logit, auc_logit)
-) %>%
-  mutate(across(where(is.numeric), ~ round(.x, 4)))
+```{r grafico-umbral-logit}
+res_logit <- map_dfr(cortes, perf_umbral_rapido, prob = p_logit, ref_alto = ref_es_alto) %>%
+  pivot_longer(c(Sensibilidad, Exactitud, Precisión, Especificidad),
+               names_to = "Métrica", values_to = "Valor")
 
-tabla(tabla_eval_logit, caption = "Métricas de Evaluación del Modelo Logit según el Umbral Utilizado",
+g_umbral_logit <- ggplot(res_logit, aes(Cutoff, Valor, color = Métrica)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = umbral_youden_logit, linetype = "dashed", color = pal[["indigo"]]) +
+  scale_color_manual(values = c(
+    Sensibilidad  = pal[["grape"]],  Exactitud  = pal[["lake"]],
+    Precisión     = pal[["periwinkle"]], Especificidad = pal[["mauve"]])) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(title = "Desempeño según el umbral de decisión — Logit (línea punteada = Youden)",
+       x = "Umbral de decisión (cutoff)", y = "Valor de la métrica")
+
+interactivo(g_umbral_logit, leyenda_abajo = TRUE)
+```
+
+```{r grafico-umbral-knn}
+res_knn <- map_dfr(cortes, perf_umbral_rapido, prob = p_knn, ref_alto = ref_es_alto) %>%
+  pivot_longer(c(Sensibilidad, Exactitud, Precisión, Especificidad),
+               names_to = "Métrica", values_to = "Valor")
+
+g_umbral_knn <- ggplot(res_knn, aes(Cutoff, Valor, color = Métrica)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = umbral_youden_knn, linetype = "dashed", color = pal[["indigo"]]) +
+  scale_color_manual(values = c(
+    Sensibilidad  = pal[["grape"]],  Exactitud  = pal[["lake"]],
+    Precisión     = pal[["periwinkle"]], Especificidad = pal[["mauve"]])) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(title = "Desempeño según el umbral de decisión — KNN (línea punteada = Youden)",
+       x = "Umbral de decisión (cutoff)", y = "Valor de la métrica")
+
+interactivo(g_umbral_knn, leyenda_abajo = TRUE)
+```
+
+## Comparación de modelos
+
+```{r comparacion-modelos}
+comp_integral <- bind_rows(
+  evalua(p_logit, test$y, 0.5, "Logit (umbral 0,50)", auc_logit),
+  evalua(p_knn,   test$y, 0.5, paste0("KNN, k = ", k_opt_class, " (umbral 0,50)"), auc_knn)
+)
+
+tabla(comp_integral, caption = "Comparación de desempeño entre Logit y KNN (umbral 0,50)",
       format.args = list(decimal.mark = ","))
 ```
 
-```{r comparacion-modelos-final}
-# ==============================================================================
-# 1. TABLA COMPARATIVA INTEGRAL DE MÉTRICAS
-# ==============================================================================
+```{r comparacion-umbrales}
+comp_umbrales <- bind_rows(
+  evalua(p_logit, test$y, umbral_youden_logit, "Logit (Youden)", auc_logit),
+  evalua(p_knn,   test$y, umbral_youden_knn,   "KNN (Youden)",   auc_knn),
+  evalua(p_logit, test$y, umbral_prev, "Logit (prevalencia)", auc_logit),
+  evalua(p_knn,   test$y, umbral_prev, "KNN (prevalencia)",   auc_knn)
+)
 
-# Si KNN ya está en el entorno (knn_fit / p_knn / cm_knn), unimos métricas:
-if (exists("p_knn") && exists("cm_knn")) {
-  roc_knn <- roc(test_df$y, p_knn, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
-  auc_knn <- as.numeric(auc(roc_knn))
-  
-  comp_integral <- tibble(
-    Métrica = c("Exactitud (Accuracy)", "Sensibilidad (Recall)", "Especificidad", 
-                "Precisión (Pos Pred Value)", "Balanced Accuracy", "Kappa", "AUC"),
-    Logit   = c(cm_logit_05$overall["Accuracy"], cm_logit_05$byClass["Sensitivity"], 
-                cm_logit_05$byClass["Specificity"], cm_logit_05$byClass["Pos Pred Value"], 
-                cm_logit_05$byClass["Balanced Accuracy"], cm_logit_05$overall["Kappa"], auc_logit),
-    KNN     = c(cm_knn$overall["Accuracy"], cm_knn$byClass["Sensitivity"], 
-                cm_knn$byClass["Specificity"], cm_knn$byClass["Pos Pred Value"], 
-                cm_knn$byClass["Balanced Accuracy"], cm_knn$overall["Kappa"], auc_knn)
-  ) %>%
-    mutate(across(where(is.numeric), ~ round(.x, 4)))
-  
-  tabla(comp_integral, caption = "Comparación Integral de Desempeño entre los Modelos Logit y KNN",
-        format.args = list(decimal.mark = ","))
-} else {
-  # Si tu compañero aún no ha unido la parte de KNN, se muestra el resumen de Logit:
-  tabla(tabla_eval_logit, caption = "Resumen de Métricas del Modelo Logit (Umbral 0.5 vs Youden)",
-        format.args = list(decimal.mark = ","))
-}
+tabla(comp_umbrales,
+      caption = "Desempeño con umbral de Youden y con umbral igual a la prevalencia",
+      format.args = list(decimal.mark = ","))
 ```
 
 ```{r curvas-roc-comparadas}
-# ==============================================================================
-# CURVAS ROC SUPERPUESTAS EN LA MUESTRA DE PRUEBA
-# ==============================================================================
+lab_logit <- paste0("Logit (AUC = ", round(auc_logit, 3), ")")
+lab_knn   <- paste0("KNN (AUC = ", round(auc_knn, 3), ")")
 
-if (exists("roc_knn")) {
-  lab_logit <- paste0("Logit (AUC = ", round(auc_logit, 3), ")")
-  lab_knn   <- paste0("KNN (AUC = ", round(auc_knn, 3), ")")
-  
-  roc_df <- bind_rows(
-    tibble(Modelo = lab_logit, fpr = 1 - roc_logit$specificities, tpr = roc_logit$sensitivities),
-    tibble(Modelo = lab_knn,   fpr = 1 - roc_knn$specificities,   tpr = roc_knn$sensitivities)
-  ) %>%
-    mutate(fpr = round(fpr, 3), tpr = round(tpr, 3)) %>%
-    distinct()
-  
-  p_roc_comp <- ggplot(roc_df, aes(x = fpr, y = tpr, color = Modelo)) +
-    geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1), linetype = "dashed", color = pal[["mauve"]]) +
-    geom_line(linewidth = 1.1) +
-    scale_color_manual(values = setNames(c(col_modelo[["Logit"]], col_modelo[["KNN"]]),
-                                         c(lab_logit, lab_knn))) +
-    scale_x_continuous(limits = c(0, 1)) +
-    scale_y_continuous(limits = c(0, 1)) +
-    labs(
-      title = "Curvas ROC Comparadas en Muestra de Prueba",
-      x = "1 - Especificidad (Tasa de Falsos Positivos)",
-      y = "Sensibilidad (Tasa de Verdaderos Positivos)"
-    )
-  
-  interactivo(p_roc_comp, leyenda_abajo = TRUE)
-}
+# Curva ROC optimizada en número de puntos
+roc_df <- bind_rows(
+  tibble(Modelo = lab_logit, fpr = 1 - roc_logit$specificities, tpr = roc_logit$sensitivities),
+  tibble(Modelo = lab_knn,   fpr = 1 - roc_knn$specificities,   tpr = roc_knn$sensitivities)
+) %>%
+  mutate(fpr = round(fpr, 2), tpr = round(tpr, 2)) %>%
+  distinct() %>% 
+  arrange(fpr, tpr)
+
+p_roc_comp <- ggplot(roc_df, aes(fpr, tpr, color = Modelo)) +
+  geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1),
+               linetype = "dashed", color = pal[["mauve"]]) +
+  geom_line(linewidth = 1.1) +
+  scale_color_manual(values = setNames(c(col_modelo[["Logit"]], col_modelo[["KNN"]]),
+                                       c(lab_logit, lab_knn))) +
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(title = "Curvas ROC comparadas en la muestra de prueba",
+       x = "1 - Especificidad (tasa de falsos positivos)",
+       y = "Sensibilidad (tasa de verdaderos positivos)")
+
+interactivo(p_roc_comp, leyenda_abajo = TRUE)
 ```
 
 ## Respuesta a las preguntas del taller
 
 ```{r resumen-auto}
-# Objetos que usa el texto de abajo
-auc_knn     <- auc_knn_val
-umbral_prev <- mean(train$y == "Alto")
+comp_05   <- comp_integral
+comp_prev <- comp_umbrales %>% filter(grepl("prevalencia", Modelo))
 
-evalua <- function(prob, real, umbral = 0.5, modelo = "", auc_val = NA) {
-  pred <- factor(if_else(prob >= umbral, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
-  cm   <- confusionMatrix(pred, real, positive = "Alto")
-  tibble(
-    Modelo        = modelo,
-    Exactitud     = cm$overall[["Accuracy"]],
-    Sensibilidad  = cm$byClass[["Sensitivity"]],
-    Especificidad = cm$byClass[["Specificity"]],
-    AUC           = auc_val
-  )
-}
-
-comp_05 <- bind_rows(
-  evalua(p_logit, test$y, 0.5, "Logit", auc_logit),
-  evalua(p_knn,   test$y, 0.5, "KNN",   auc_knn)
-)
-
-comp_prev <- bind_rows(
-  evalua(p_logit, test$y, umbral_prev, "Logit", auc_logit),
-  evalua(p_knn,   test$y, umbral_prev, "KNN",   auc_knn)
-)
-
-mejor_acc  <- comp_05$Modelo[which.max(comp_05$Exactitud)]
-mejor_sens <- comp_05$Modelo[which.max(comp_05$Sensibilidad)]
-mejor_esp  <- comp_05$Modelo[which.max(comp_05$Especificidad)]
-mejor_auc  <- comp_05$Modelo[which.max(comp_05$AUC)]
-mejor_sens_prev <- comp_prev$Modelo[which.max(comp_prev$Sensibilidad)]
+mejor_acc       <- c("Logit", "KNN")[which.max(comp_05$Exactitud)]
+mejor_sens      <- c("Logit", "KNN")[which.max(comp_05$Sensibilidad)]
+mejor_esp       <- c("Logit", "KNN")[which.max(comp_05$Especificidad)]
+mejor_auc       <- c("Logit", "KNN")[which.max(comp_05$AUC)]
+mejor_sens_prev <- c("Logit", "KNN")[which.max(comp_prev$Sensibilidad)]
 ```
 
 - **¿Cuál tiene mejor exactitud?** `r mejor_acc` (Logit: `r percent(comp_05$Exactitud[1], accuracy = 0.1)`; KNN: `r percent(comp_05$Exactitud[2], accuracy = 0.1)`).
@@ -3029,22 +2895,22 @@ mejor_sens_prev <- comp_prev$Modelo[which.max(comp_prev$Sensibilidad)]
 - **¿Cuál tiene mayor especificidad?** `r mejor_esp`.
 - **¿Cuál tiene mejor AUC?** `r mejor_auc` (Logit: `r round(auc_logit, 3)`; KNN: `r round(auc_knn, 3)`).
 
-### ¿Qué modelo se recomienda?
+ni### ¿Qué modelo se recomienda?
 
 Se recomienda el **Logit** como modelo principal por las siguientes razones, que se mantienen aunque las métricas de ambos modelos sean cercanas:
 
-1. **Interpretabilidad:** entrega coeficientes y *odds ratios* con intervalos de confianza y significancia, lo que permite explicar *por qué* un trabajador tiene mayor o menor probabilidad de superar el SMMLV. KNN es una "caja negra" sin parámetros interpretables.
-2. **Eficiencia:** una vez estimado, predecir es instantáneo; KNN debe guardar toda la muestra de entrenamiento y calcular distancias en cada predicción.
-3. **Estabilidad:** KNN depende de la escala de las variables y de la elección de *k*, y es sensible a las variables categóricas convertidas en *dummies*.
+1.  **Interpretabilidad:** entrega coeficientes y *odds ratios* con intervalos de confianza y significancia, lo que permite explicar *por qué* un trabajador tiene mayor o menor probabilidad de superar el SMMLV. KNN es una "caja negra" sin parámetros interpretables.
+2.  **Eficiencia:** una vez estimado, predecir es instantáneo; KNN debe guardar toda la muestra de entrenamiento y calcular distancias en cada predicción.
+3.  **Estabilidad:** KNN depende de la escala de las variables y de la elección de *k*, y es sensible a las variables categóricas convertidas en *dummies*.
 
 Si el objetivo fuera únicamente **maximizar la detección** de quienes superan el mínimo, convendría comparar ambos modelos ajustando el umbral de decisión, ya que la tabla del umbral por prevalencia muestra cómo cambia el balance entre sensibilidad y especificidad.
 
 # Conclusiones
 
-1. **Ambos modelos discriminan razonablemente bien.** Con AUC de `r round(auc_logit, 3)` (Logit) y `r round(auc_knn, 3)` (KNN) y exactitudes de `r percent(comp_05$Exactitud[1], accuracy = 0.1)` y `r percent(comp_05$Exactitud[2], accuracy = 0.1)`, las variables laborales y educativas seleccionadas contienen información útil para saber si alguien supera el salario mínimo.
-2. **Las diferencias entre modelos son pequeñas.** El modelo con mejor AUC es `r mejor_auc`, pero la ganancia de un algoritmo más flexible como KNN es limitada frente a la sencillez y la interpretabilidad del Logit.
-3. **El tipo de empleado, las horas trabajadas y el nivel educativo son los principales determinantes.** Los empleados domésticos y los trabajadores por cuenta propia tienen menores probabilidades de superar el SMMLV; en cambio, más educación y más horas semanales las aumentan (ver *odds ratios*).
-4. **El umbral importa.** Con 0,5 los modelos son más específicos que sensibles porque la clase "Alto" es minoritaria; ajustar el umbral mejora la detección de casos positivos a costa de más falsos positivos.
+1.  **Ambos modelos discriminan razonablemente bien.** Con AUC de `r round(auc_logit, 3)` (Logit) y `r round(auc_knn, 3)` (KNN) y exactitudes de `r percent(comp_05$Exactitud[1], accuracy = 0.1)` y `r percent(comp_05$Exactitud[2], accuracy = 0.1)`, las variables laborales y educativas seleccionadas contienen información útil para saber si alguien supera el salario mínimo.
+2.  **Las diferencias entre modelos son pequeñas.** El modelo con mejor AUC es `r mejor_auc`, pero la ganancia de un algoritmo más flexible como KNN es limitada frente a la sencillez y la interpretabilidad del Logit.
+3.  **El tipo de empleado, las horas trabajadas y el nivel educativo son los principales determinantes.** Los empleados domésticos y los trabajadores por cuenta propia tienen menores probabilidades de superar el SMMLV; en cambio, más educación y más horas semanales las aumentan (ver *odds ratios*).
+4.  **El umbral importa.** Con 0,5 los modelos son más específicos que sensibles porque la clase "Alto" es minoritaria; ajustar el umbral mejora la detección de casos positivos a costa de más falsos positivos.
 
 ## Recomendaciones
 
@@ -3059,7 +2925,7 @@ Si el objetivo fuera únicamente **maximizar la detección** de quienes superan 
 Sin embargo, hay limitaciones que impiden hablar de un logro completo:
 
 - La **sensibilidad** con el umbral estándar es moderada: una parte importante de quienes superan el mínimo no es detectada.
-- Se **pierde información** al convertir el ingreso continuo en una variable binaria: quien gana $1.200.000 y quien gana $10.000.000 quedan en la misma clase.
+- Se **pierde información** al convertir el ingreso continuo en una variable binaria: quien gana \$1.200.000 y quien gana \$10.000.000 quedan en la misma clase.
 - El modelo es **predictivo, no causal**: las asociaciones encontradas no implican que, por ejemplo, trabajar más horas *cause* un mayor ingreso.
 - Faltan variables relevantes (sexo, región, sector, formalidad) y el ingreso autorreportado puede tener error de medición.
 
@@ -3078,9 +2944,16 @@ Por lo tanto, el modelo es útil como **herramienta de clasificación y de carac
 - Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis.* Springer.
 - Xie, Y., Allaire, J. J., & Grolemund, G. (2018). *R Markdown: The Definitive Guide.* Chapman & Hall/CRC.
 
-<div id="progreso"></div>
-<button id="arriba" title="Volver arriba" aria-label="Volver arriba">↑</button>
+::: {#progreso}
+:::
 
+<button id="arriba" title="Volver arriba" aria-label="Volver arriba">
+
+↑
+
+</button>
+
+```{=html}
 <script>
 (function () {
   var barra = document.getElementById("progreso");
@@ -3098,6 +2971,9 @@ Por lo tanto, el modelo es útil como **herramienta de clasificación y de carac
   actualizar();
 })();
 </script>
+```
+
+```{=html}
 <script>
 (function () {
   var titulos = Array.prototype.slice.call(
@@ -3148,3 +3024,4 @@ Por lo tanto, el modelo es útil como **herramienta de clasificación y de carac
   resaltar();
 })();
 </script>
+```
