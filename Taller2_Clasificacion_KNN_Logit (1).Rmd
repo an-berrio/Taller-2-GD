@@ -1,0 +1,3150 @@
+---
+title: "CLASIFICACIÓN DEL INGRESO LABORAL EN COLOMBIA"
+subtitle: "Análisis hecho con microdatos de la GEIH - enero, 2024"
+author: "Valerie Juliana Moran Rodriguez, Liyen Geovanna Narvaez Jojoa, Jose Manuel Toro Rodriguez, Laura Daniela Rada Berrio"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output:
+  html_document:
+    css: estilo.css
+    theme: bootstrap
+    highlight: tango
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    code_folding: hide
+    self_contained: true
+    df_print: paged
+lang: es
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  fig.align = "center", fig.width = 8, fig.height = 4.6, dpi = 120
+)
+library(tidyverse)
+library(readxl)
+library(plotly)   
+library(knitr)       
+library(kableExtra)  
+library(caret)       
+library(pROC)       
+library(scales)
+library(reactable)
+library(DT)
+pal <- c(mauve = "#dabfff", periwinkle = "#907ad6", grape = "#4f518c",
+         indigo = "#2c2a4a", lake = "#7fdeff")
+col_bajo   <- pal[["mauve"]]
+col_alto   <- pal[["periwinkle"]]
+col_modelo <- c("Logit" = pal[["grape"]], "KNN" = pal[["lake"]])
+
+tema_min <- theme_minimal(base_size = 13) +
+  theme(
+    text = element_text(colour = "#2c2a4a"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.major.y = element_line(colour = "#ece4fb"),
+    plot.title = element_text(face = "plain", size = 17, colour = "#4f518c"),
+    axis.title = element_text(colour = "#4f518c"),
+    axis.text  = element_text(colour = "#2c2a4a"),
+    legend.position = "bottom",
+    strip.text = element_text(face = "plain", colour = "#4f518c", size = 13)
+  )
+theme_set(tema_min)
+fuente_plotly <- "Spectral, Georgia, serif"
+interactivo <- function(p, tooltip = "all", leyenda_abajo = FALSE) {
+  g <- ggplotly(p, tooltip = tooltip) %>%
+    layout(
+      font = list(family = fuente_plotly, color = "#2c2a4a"),
+      hoverlabel = list(bgcolor = "#2c2a4a", bordercolor = "#7fdeff",
+                        font = list(family = fuente_plotly, color = "#ffffff")),
+      paper_bgcolor = "rgba(0,0,0,0)",
+      plot_bgcolor  = "rgba(0,0,0,0)",
+      margin = list(t = 60)
+    ) %>%
+    config(displaylogo = FALSE,
+           modeBarButtonsToRemove = c("lasso2d", "select2d", "autoScale2d"))
+  if (leyenda_abajo) {
+    g <- g %>% layout(legend = list(orientation = "h", x = 0.5, xanchor = "center",
+                                    y = -0.25, title = list(text = "")))
+  }
+  g
+}
+
+tabla <- function(x, ...) {
+  x %>%
+    kable(..., align = "l") %>%
+    kable_styling(bootstrap_options = c("hover", "condensed"), full_width = TRUE)
+}
+```
+
+# 1. Introducción
+
+POR HACER 1
+
+# Metodología
+
+## Variable dependiente
+
+POR HACER 2
+Para el periodo de Enero de 2024, el SMMLV oficial fijado por el Gobierno Nacional es de **$1.300.000** COP (Decreto 2292 de 2023). Se fija la categoría "Alto" como clase positiva, de modo que la Sensibilidad mide la capacidad de los modelos para identificar correctamente a los trabajadores que superan el salario mínimo.
+
+::: {.leyenda .tab}
+**Tabla 1.** Equivalencia entre los códigos del DANE y los nombres de las variables
+:::
+
+| Variable | Código DANE | Tipo | Categoría / unidad |
+|---|---|---|---|
+| Ingreso laboral `inglabo` | `INGLABO` | Numérica | Pesos mensuales |
+| Clase de ingreso | `Y_ingreso` | Categórica | Alto (1) si supera el SMMLV, Bajo (0) en otro caso |
+
+::: {.fuente .tab}
+Fuente: Elaboración propia con base en la GEIH del DANE, enero de 2024.
+:::
+
+## Variables independientes
+
+POR HACER 3
+
+::: {.leyenda .tab}
+**Tabla 2.** Equivalencia entre los códigos del DANE y los nombres de las variables
+:::
+
+| Nombre en la base de datos | Código DANE | Tipo | Categoría / unidad |
+|---|---|---|---|
+| Sexo `sexo_f` | `P3271` | Categórica | 1 = Hombre, 2 = Mujer |
+| Edad `edad` | `P6040` | Numérica | Años cumplidos |
+| Edad al cuadrado `edad2` | `P6040` | Numérica | Años cumplidos al cuadrado |
+| Nivel educativo `educ_f` | `P3042` | Categórica | 1 = Primaria, 2 = Secundaria, 3 = Técnica/Tecnología, 4 = Universitaria, 5 = Posgrado |
+| Horas trabajadas `horas` | `P6800` | Horas por semana |
+| Antigüedad (meses) `antig` | `P6426` | Meses en el trabajo actual |
+| Tipo de empleado `tipo_emp` | `P6430` | Categórica | 1 = Empresa particular, 2 = Gobierno, 3 = Doméstico, 4 = Cuenta propia, 5 = Patrón, 6–8 = Jornalero / otros |
+
+
+::: {.fuente .tab}
+Fuente: Elaboración propia con base en la GEIH del DANE, enero de 2024.
+:::
+
+## Depuración adicional
+```{r datos}
+archivo <- "Base_GEIH_Taller2_limpia1.xlsx"
+
+if (!file.exists(archivo)) {
+  stop("No encuentro '", archivo, "' en la carpeta: ", getwd(),
+       "\nArchivos .xlsx que sí hay aquí: ",
+       paste(list.files(pattern = "\\.xlsx$"), collapse = ", "))
+}
+raw <- read_excel(archivo)   
+
+n_raw <- nrow(raw)
+```
+```{r limpieza}
+
+SMMLV <- 1300000
+
+datos <- raw %>%
+ transmute(
+    inglabo = inglabo,
+    edad    = edad,
+    edad2   = edad2,
+    antig   = antig,
+    horas   = horas,
+    educ    = educ,
+    tipo    = tipo,
+    P3271   = P3271,
+    CLASE   = CLASE,
+    P6070   = P6070
+  ) %>%
+  filter(
+    edad >= 15,
+    educ != 99,
+    horas <= 100,
+    antig <= 12 * (edad - 10)
+  ) %>%
+  mutate(
+
+    tipo_emp = factor(
+      case_when(
+        tipo == 1 ~ "Empleado empresa particular",
+        tipo == 2 ~ "Empleado del gobierno",
+        tipo == 3 ~ "Empleado dom\u00e9stico",
+        tipo == 4 ~ "Cuenta propia",
+        tipo == 5 ~ "Patr\u00f3n o empleador",
+        TRUE ~ "Otros (familiar sin pago / jornalero)"
+      ),
+      levels = c(
+        "Empleado empresa particular",
+        "Empleado del gobierno",
+        "Empleado dom\u00e9stico",
+        "Cuenta propia",
+        "Patr\u00f3n o empleador",
+        "Otros (familiar sin pago / jornalero)"
+      ),
+      ordered = FALSE
+    ),
+
+    educ_f = factor(
+      case_when(
+        educ %in% c(1, 2, 3)        ~ "Primaria",
+        educ %in% c(4, 5, 6, 7)     ~ "Secundaria",
+        educ %in% c(8, 9)           ~ "T\u00e9cnica/Tecnolog\u00eda",
+        educ == 10                  ~ "Universitaria",
+        educ %in% c(11, 12, 13)     ~ "Postgrado"
+      ),
+      levels = c(
+        "Primaria",
+        "Secundaria",
+        "T\u00e9cnica/Tecnolog\u00eda",
+        "Universitaria",
+        "Postgrado"
+      ),
+      ordered = FALSE
+    ),
+
+    sexo_f = factor(
+      if_else(P3271 == 1, "Hombre", "Mujer"),
+      levels = c("Hombre", "Mujer"),
+      ordered = FALSE
+    ),
+
+    zona_f = factor(
+      if_else(CLASE == 1, "Urbano", "Rural"),
+      levels = c("Urbano", "Rural"),
+      ordered = FALSE
+    ),
+
+    est_civil_f = factor(
+      case_when(
+        P6070 == 1 ~ "Uni\u00f3n libre (<2 a\u00f1os)",
+        P6070 == 2 ~ "Uni\u00f3n libre (>=2 a\u00f1os)",
+        P6070 == 3 ~ "Casado(a)",
+        P6070 == 4 ~ "Separado(a) / Divorciado(a)",
+        P6070 == 5 ~ "Viudo(a)",
+        P6070 == 6 ~ "Soltero(a)"
+      ),
+      levels = c(
+        "Uni\u00f3n libre (<2 a\u00f1os)",
+        "Uni\u00f3n libre (>=2 a\u00f1os)",
+        "Casado(a)",
+        "Separado(a) / Divorciado(a)",
+        "Viudo(a)",
+        "Soltero(a)"
+      ),
+      ordered = FALSE
+    ),
+
+    y = factor(
+      if_else(inglabo > SMMLV, "Alto", "Bajo"),
+      levels = c("Bajo", "Alto")
+    )
+  )
+
+n_final <- nrow(datos)
+prev <- mean(datos$y == "Alto")
+
+```
+
+
+## Base de datos
+
+POR HACER 4
+La base proviene de la GEIH publicada por el DANE ([microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata)). La versión depurada entregada contiene **POR AVERIGUAR**.
+
+```{r limpieza-previa, ref.label="limpieza", include=FALSE}
+```
+
+```{r prep-tabla, include=FALSE}
+
+tabla_base <- datos %>%
+  transmute(
+    `Sexo`               = sexo_f,
+    `Edad`               = edad,
+    `Nivel educativo`    = educ_f,
+    `Horas trabajadas`   = horas,
+    `Antigüedad (meses)` = antig,
+    `Tipo de empleo`     = tipo_emp,
+    `Ingreso laboral`    = inglabo,
+    `Clase de ingreso`   = y
+  )
+```
+
+POR HACER 5
+La base depurada tiene **26,408 observaciones** y **9 variables**, correspondientes a trabajadores ocupados con ingreso laboral positivo. Los códigos originales del DANE se reemplazaron por los nombres de sus categorías (por ejemplo, `P3271 = 1` aparece como "Hombre"). La tabla permite filtrar por columna, cambiar el número de filas por página y navegar entre páginas.
+
+::: {.leyenda .tab}
+**Tabla 3.** Base de datos utilizada en el estudio
+:::
+
+```{r tabla-base}
+reactable(
+  tabla_base,
+  filterable = TRUE,
+  striped = TRUE,
+  highlight = TRUE,
+  defaultPageSize = 15,
+  showPageSizeOptions = TRUE,
+  pageSizeOptions = c(10, 15, 25, 50, 100),
+  paginationType = "numbers",
+  defaultColDef = colDef(align = "center", minWidth = 150),
+  columns = list(
+    `Ingreso laboral` = colDef(
+      format = colFormat(prefix = "$ ", separators = TRUE, digits = 0, locales = "es-CO"),
+      minWidth = 190),
+    `Log. ingreso` = colDef(format = colFormat(digits = 2, locales = "es-CO")),
+    `Nivel educativo` = colDef(minWidth = 210),
+    `Tipo de empleo` = colDef(minWidth = 290),
+    `Antigüedad (meses)` = colDef(minWidth = 190)
+  ),
+  theme = reactableTheme(
+    color = "#2c2a4a",
+    backgroundColor = "#ffffff",
+    borderColor = "#e6dafa",
+    stripedColor = "#faf6ff",
+    highlightColor = "#f1e8ff",
+    cellPadding = "10px 12px",
+    style = list(fontFamily = "Spectral, Georgia, serif", fontSize = "var(--fs)"),
+    headerStyle = list(background = "#4f518c", color = "#ffffff", borderColor = "#4f518c"),
+    filterInputStyle = list(background = "#ffffff", borderColor = "#dabfff"),
+    inputStyle = list(borderColor = "#dabfff"),
+    paginationStyle = list(borderColor = "#e6dafa"),
+    pageButtonHoverStyle = list(backgroundColor = "#dabfff"),
+    pageButtonActiveStyle = list(backgroundColor = "#907ad6", color = "#ffffff"),
+    pageButtonCurrentStyle = list(backgroundColor = "#2c2a4a", color = "#7fdeff")
+  )
+)
+```
+
+::: {.fuente .tab}
+Fuente: Elaboración propia con base en la GEIH del DANE, enero de 2024.
+:::
+
+
+# Resultados Descritpivos
+
+## Análisis descriptivo de la varible dependiente 
+```{r TABLA1_DISTRIBUCIOn_VARIABLE_Y}
+
+tabla_y <- datos %>%
+  count(y, name = "Trabajadores") %>%
+  mutate(
+    Porcentaje = 100 * Trabajadores / sum(Trabajadores)
+  )
+
+tabla_y_html <- data.frame(
+  "Nivel de ingreso" = as.character(tabla_y$y),
+
+  "Trabajadores" = formatC(
+    tabla_y$Trabajadores,
+    format = "d",
+    big.mark = "."
+  ),
+
+  "Porcentaje" = paste0(
+    formatC(
+      tabla_y$Porcentaje,
+      format = "f",
+      digits = 1,
+      decimal.mark = ","
+    ),
+    "%"
+  ),
+
+  check.names = FALSE
+)
+
+
+DT::datatable(
+  tabla_y_html,
+
+  rownames = FALSE,
+
+  caption = paste0(
+    "Tabla 2. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan el nivel de ingreso laboral - ",
+    "GEIH"
+  ),
+
+  options = list(
+    dom = "t",
+    paging = FALSE,
+    searching = FALSE,
+    ordering = FALSE,
+    autoWidth = TRUE
+  ),
+
+  class = "stripe hover compact",
+  width = "100%"
+)
+
+
+```
+
+```{r GRAFICO1_NIVEL_DE_INGRESO}
+
+datos_y <- datos %>%
+  count(y, name = "Trabajadores") %>%
+  mutate(
+    Porcentaje = 100 * Trabajadores / sum(Trabajadores),
+
+    Etiqueta = paste0(
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ), "%"
+    ),
+
+    Color = if_else(
+      y == "Bajo", col_bajo, col_alto
+    ),
+
+    Detalle = paste0(
+      "<b>Nivel de ingreso: ", y, "</b>",
+      "<br>Trabajadores: ",
+      scales::number(Trabajadores, big.mark = "."),
+      "<br>Participacion: ", Etiqueta,
+      "<extra></extra>"
+    )
+  )
+
+grafico_y <- plotly::plot_ly(
+  data = datos_y,
+  x = ~y,
+  y = ~Porcentaje,
+  type = "bar",
+
+  marker = list(
+    color = datos_y$Color,
+    line = list(
+      color = "white",
+      width = 1.5
+    )
+  ),
+
+  text = ~Etiqueta,
+  textposition = "outside",
+  textfont = list(
+    size = 17,
+    color = "#30294F"
+  ),
+
+  cliponaxis = FALSE,
+  hovertemplate = ~Detalle,
+  showlegend = FALSE
+) %>%
+
+  plotly::layout(
+    title = list(
+      text = paste0(
+        "Distribucion del ingreso laboral",
+        "<br><sup>GEIH 2024 | ",
+        "Salario minimo: $1.300.000</sup>"
+      ),
+      x = 0.5,
+      xanchor = "center",
+      font = list(
+        size = 20,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "",
+      tickfont = list(size = 14),
+      showline = FALSE
+    ),
+
+    yaxis = list(
+      title = "Porcentaje de trabajadores",
+      ticksuffix = "%",
+      range = c(0, 77),
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    bargap = 0.55,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 75,
+      r = 35,
+      t = 95,
+      b = 55
+    ),
+
+    hoverlabel = list(
+      bgcolor = "#FFFFFF",
+      font = list(
+        size = 13,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+
+grafico_y <- grafico_y %>%
+  plotly::layout(
+    title = list(
+      text = paste0(
+        "Grafico 1 Distribucion de trabajadores por nivel de ingreso",
+        "<br><sup>GEIH  | Salario minimo: $1.300.000</sup>"
+      ),
+      x = 0.5,
+      xanchor = "center",
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+    xaxis = list(
+      title = "",
+      tickmode = "array",
+      tickvals = c("Bajo", "Alto"),
+      ticktext = c(
+        "Hasta $1.300.000",
+        "Mas de $1.300.000"
+      )
+    )
+  )
+
+grafico_y
+```
+
+```{r GRAFICO2}
+
+limite_visual <- 5000000
+tam_bin <- 100000
+
+datos_ingreso_plot <- datos %>%
+  filter(!is.na(inglabo), inglabo >= 0, inglabo <= limite_visual)
+
+grafico_ingreso <- plotly::plot_ly(
+  data = datos_ingreso_plot,
+  x = ~inglabo,
+  type = "histogram",
+  xbins = list(
+    start = 0,
+    end = limite_visual,
+    size = tam_bin
+  ),
+  marker = list(
+    color = "#B9A7E8",
+    line = list(
+      color = "white",
+      width = 0.5
+    )
+  ),
+  hovertemplate = paste(
+    "Ingreso laboral: %{x}<br>",
+    "Trabajadores: %{y}<extra></extra>"
+  ),
+  showlegend = FALSE
+) %>%
+  plotly::layout(
+    title = list(
+      text = paste0(
+        "Grafico 2 Distribucion del ingreso laboral mensual",
+        "<br><sup>GEIH, 2024 | ",
+        "Rango visualizado: hasta $5.000.000 | ",
+        "Linea punteada: salario minimo de $1.300.000</sup>"
+      ),
+      x = 0.5,
+      xanchor = "center",
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+    xaxis = list(
+      title = "Ingreso laboral mensual (COP)",
+      range = c(0, limite_visual),
+      tickprefix = "$",
+      tickformat = ",d",
+      gridcolor = "#F1EDF7",
+      zeroline = FALSE
+    ),
+    yaxis = list(
+      title = "Numero de trabajadores",
+      rangemode = "tozero",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+    shapes = list(
+      list(
+        type = "line",
+        x0 = SMMLV,
+        x1 = SMMLV,
+        y0 = 0,
+        y1 = 1,
+        yref = "paper",
+        line = list(
+          color = "#2C2A4A",
+          width = 2,
+          dash = "dash"
+        )
+      )
+    ),
+    annotations = list(
+      list(
+        x = SMMLV,
+        y = 1,
+        yref = "paper",
+        text = "Salario minimo",
+        showarrow = FALSE,
+        yanchor = "bottom",
+        font = list(
+          color = "#2C2A4A",
+          size = 12
+        )
+      )
+    ),
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+    margin = list(
+      l = 75,
+      r = 35,
+      t = 105,
+      b = 80
+    ),
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 13,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+grafico_ingreso
+```
+
+## Variables numéricas
+
+```{r TABLA2_VARIABLES_CUANTITATIVAS}
+
+columnas <- c(
+  "inglabo",
+  "edad",
+  "edad2",
+  "antig",
+  "horas"
+)
+
+etiquetas <- c(
+  "Ingreso laboral (COP)",
+  "Edad (a\u00f1os)",
+  "Edad al cuadrado",
+  "Antig\u00fcedad laboral (meses)",
+  "Horas trabajadas semanalmente"
+)
+
+tabla_cuantitativas <- data.frame(
+  Variable = etiquetas,
+
+  Media = sapply(
+    datos[columnas], mean, na.rm = TRUE
+  ),
+
+  Mediana = sapply(
+    datos[columnas], median, na.rm = TRUE
+  ),
+
+  `Desv. est.` = sapply(
+    datos[columnas], sd, na.rm = TRUE
+  ),
+
+  Minimo = sapply(
+    datos[columnas], min, na.rm = TRUE
+  ),
+
+  Maximo = sapply(
+    datos[columnas], max, na.rm = TRUE
+  ),
+
+  check.names = FALSE,
+  row.names = NULL
+)
+
+
+for (j in 2:ncol(tabla_cuantitativas)) {
+
+  tabla_cuantitativas[[j]] <- vapply(
+    seq_len(nrow(tabla_cuantitativas)),
+    function(i) {
+
+      decimales <- if (i == 1) 0 else 1
+
+      formatC(
+        tabla_cuantitativas[[j]][i],
+        format = "f",
+        digits = decimales,
+        big.mark = ".",
+        decimal.mark = ","
+      )
+    },
+    character(1)
+  )
+}
+
+
+names(tabla_cuantitativas) <- c(
+  "Variable",
+  "Media",
+  "Mediana",
+  "Desv. est.",
+  "M\u00ednimo",
+  "M\u00e1ximo"
+)
+
+
+DT::datatable(
+  tabla_cuantitativas,
+
+  rownames = FALSE,
+
+  caption = paste0(
+    "Tabla 2. Estad\u00edsticas descriptivas ",
+    "de las variables cuantitativas - ",
+    "GEIH"
+  ),
+
+  options = list(
+    dom = "t",
+    paging = FALSE,
+    searching = FALSE,
+    ordering = FALSE,
+    autoWidth = TRUE
+  ),
+
+  class = "stripe hover compact",
+  width = "100%"
+)
+```
+
+## Relación con Ingreso Laboral 
+
+### Distribución por grupos de edad
+```{r grafico3_edad}
+
+if (!all(c("edad", "y") %in% names(datos))) {
+  stop("Faltan las variables edad o y")
+}
+
+
+datos_g3 <- datos %>%
+  dplyr::select(edad, y) %>%
+  dplyr::filter(
+    !is.na(edad),
+    !is.na(y)
+  ) %>%
+  dplyr::mutate(
+    y = factor(
+      as.character(y),
+      levels = c("Bajo", "Alto")
+    )
+  )
+
+
+grafico_edad <- plotly::plot_ly() %>%
+
+  # Ingreso Bajo
+  plotly::add_boxplot(
+    x = rep(
+      "Bajo",
+      sum(datos_g3$y == "Bajo")
+    ),
+    y = datos_g3$edad[datos_g3$y == "Bajo"],
+
+    name = "Ingreso Bajo",
+
+    fillcolor = "#DABFFF",
+
+    line = list(
+      color = "#907AD6",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::add_boxplot(
+    x = rep(
+      "Alto",
+      sum(datos_g3$y == "Alto")
+    ),
+    y = datos_g3$edad[datos_g3$y == "Alto"],
+
+    name = "Ingreso Alto",
+
+    fillcolor = "#907AD6",
+
+    line = list(
+      color = "#4F518C",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::layout(
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 3 Distribuci\u00f3n de la edad ",
+        "seg\u00fan nivel de ingreso laboral",
+        "<br><sup>GEIH,2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Nivel de ingreso laboral",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = c("Bajo", "Alto"),
+      showgrid = FALSE
+    ),
+
+    yaxis = list(
+      title = "Edad (a\u00f1os)",
+      rangemode = "tozero",
+      tickformat = ".0f",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 80,
+      r = 40,
+      t = 110,
+      b = 80
+    ),
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+grafico_edad
+```
+
+### Distribución de la antiguedad laboral
+```{r grafico4_antig}
+
+if (!all(c("antig", "y") %in% names(datos))) {
+  stop("Faltan las variables antig o y")
+}
+
+
+datos_g4 <- datos %>%
+  dplyr::select(antig, y) %>%
+  dplyr::filter(
+    !is.na(antig),
+    !is.na(y)
+  ) %>%
+  dplyr::mutate(
+    y = factor(
+      as.character(y),
+      levels = c("Bajo", "Alto")
+    )
+  )
+
+
+resumen_g4 <- datos_g4 %>%
+  dplyr::group_by(y) %>%
+  dplyr::summarise(
+    Trabajadores = dplyr::n(),
+    Media = mean(antig),
+    Mediana = median(antig),
+    Q1 = as.numeric(quantile(antig, 0.25)),
+    Q3 = as.numeric(quantile(antig, 0.75)),
+    Minimo = min(antig),
+    Maximo = max(antig),
+    .groups = "drop"
+  )
+
+
+grafico_antig <- plotly::plot_ly() %>%
+
+  plotly::add_boxplot(
+    x = rep(
+      "Bajo",
+      sum(datos_g4$y == "Bajo")
+    ),
+
+    y = datos_g4$antig[datos_g4$y == "Bajo"],
+
+    name = "Ingreso Bajo",
+
+    fillcolor = "#DABFFF",
+
+    line = list(
+      color = "#907AD6",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::add_boxplot(
+    x = rep(
+      "Alto",
+      sum(datos_g4$y == "Alto")
+    ),
+
+    y = datos_g4$antig[datos_g4$y == "Alto"],
+
+    name = "Ingreso Alto",
+
+    fillcolor = "#907AD6",
+
+    line = list(
+      color = "#4F518C",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::layout(
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 4. Distribuci\u00f3n de la ",
+        "antig\u00fcedad laboral ",
+        "seg\u00fan nivel de ingreso",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Nivel de ingreso laboral",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = c("Bajo", "Alto"),
+      showgrid = FALSE
+    ),
+
+    yaxis = list(
+      title = "Antig\u00fcedad laboral (meses)",
+      rangemode = "tozero",
+      tickformat = ".0f",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 90,
+      r = 40,
+      t = 110,
+      b = 80
+    ),
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+
+grafico_antig
+```
+
+### Distribución de las horas trabajadas semanalmente
+```{r grafico5_horas_trab}
+
+if (!all(c("horas", "y") %in% names(datos))) {
+  stop("Faltan las variables horas o y")
+}
+
+if (anyNA(datos[, c("horas", "y")])) {
+  stop("Existen valores faltantes")
+}
+
+datos_g5 <- datos %>%
+  dplyr::select(horas, y) %>%
+  dplyr::mutate(
+    y = factor(
+      as.character(y),
+      levels = c("Bajo", "Alto")
+    )
+  )
+
+resumen_g5 <- datos_g5 %>%
+  dplyr::group_by(y) %>%
+  dplyr::summarise(
+    Trabajadores = dplyr::n(),
+    Media = mean(horas),
+    Mediana = median(horas),
+    Q1 = as.numeric(quantile(horas, 0.25)),
+    Q3 = as.numeric(quantile(horas, 0.75)),
+    Minimo = min(horas),
+    Maximo = max(horas),
+    .groups = "drop"
+  )
+
+
+grafico_horas_g5 <- plotly::plot_ly() %>%
+
+  plotly::add_boxplot(
+    x = rep(
+      "Bajo",
+      sum(datos_g5$y == "Bajo")
+    ),
+
+    y = datos_g5$horas[datos_g5$y == "Bajo"],
+
+    name = "Ingreso Bajo",
+
+    fillcolor = "#DABFFF",
+
+    line = list(
+      color = "#907AD6",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::add_boxplot(
+    x = rep(
+      "Alto",
+      sum(datos_g5$y == "Alto")
+    ),
+
+    y = datos_g5$horas[datos_g5$y == "Alto"],
+
+    name = "Ingreso Alto",
+
+    fillcolor = "#907AD6",
+
+    line = list(
+      color = "#4F518C",
+      width = 2
+    ),
+
+    boxmean = TRUE,
+    boxpoints = FALSE,
+    showlegend = FALSE
+  ) %>%
+
+  plotly::layout(
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 5. Horas trabajadas semanalmente ",
+        "seg\u00fan nivel de ingreso laboral",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Nivel de ingreso laboral",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = c("Bajo", "Alto"),
+      showgrid = FALSE
+    ),
+
+  yaxis = list(
+  title = "Horas trabajadas por semana",
+  range = c(0, 105),
+  dtick = 10,
+  tickformat = ".0f",
+  hoverformat = ".1f",
+  gridcolor = "#ECE9F3",
+  zeroline = FALSE
+),
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 85,
+      r = 40,
+      t = 110,
+      b = 80
+    ),
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+
+grafico_horas_g5
+
+```
+
+## Variables categóricas
+```{r preparacion_tablas_categoricas}
+
+educ5_desc <- factor(
+  dplyr::case_when(
+    datos$educ %in% 1:3 ~ "Primaria o menos",
+    datos$educ %in% 4:6 ~ "Secundaria",
+    datos$educ %in% 7:9 ~ "T\u00e9cnica-tecnol\u00f3gica",
+    datos$educ == 10 ~ "Universitaria",
+    datos$educ %in% 11:13 ~ "Posgrado",
+    TRUE ~ NA_character_
+  ),
+  levels = c(
+    "Primaria o menos",
+    "Secundaria",
+    "T\u00e9cnica-tecnol\u00f3gica",
+    "Universitaria",
+    "Posgrado"
+  )
+)
+
+
+resumen_cat_desc <- function(x) {
+
+  if (anyNA(x)) {
+    stop("Hay valores faltantes en la variable")
+  }
+
+  f <- table(x)
+  f <- f[f > 0]
+
+  data.frame(
+    Categoria = names(f),
+    N = as.integer(f),
+    Porcentaje = 100 * as.numeric(f) / sum(f),
+    row.names = NULL
+  )
+}
+
+
+mostrar_cat_desc <- function(tabla, titulo) {
+
+  DT::datatable(
+    tabla,
+
+    rownames = FALSE,
+
+    colnames = c(
+      "Categor\u00eda",
+      "Frecuencia absoluta (N)",
+      "Frecuencia relativa (%)"
+    ),
+
+    caption = titulo,
+
+    options = list(
+      dom = "t",
+      paging = FALSE,
+      searching = FALSE,
+      ordering = FALSE,
+      autoWidth = FALSE,
+
+      columnDefs = list(
+        list(
+          targets = 0,
+          width = "55%"
+        ),
+        list(
+          targets = c(1, 2),
+          width = "22%",
+          className = "dt-right"
+        )
+      )
+    ),
+
+    class = "stripe hover compact",
+    width = "100%"
+  ) %>%
+    DT::formatRound(
+      columns = "N",
+      digits = 0,
+      mark = ".",
+      dec.mark = ","
+    ) %>%
+    DT::formatRound(
+      columns = "Porcentaje",
+      digits = 1,
+      mark = ".",
+      dec.mark = ","
+    )
+}
+```
+
+### Nivel educativo 
+```{r TABLA3_NIVEL_EDUCATIVO}
+
+tabla_educ_desc <- resumen_cat_desc(educ5_desc)
+mostrar_cat_desc(
+  tabla_educ_desc,
+  paste0(
+    "Tabla 3. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan nivel educativo - GEIH 2024"
+  )
+)
+```
+
+```{r grafico6_educacion_ingreso}
+
+if (!all(c("educ_f", "y") %in% names(datos))) {
+  stop("Faltan las variables educ_f o y")
+}
+
+if (anyNA(datos[, c("educ_f", "y")])) {
+  stop("Existen registros sin clasificar")
+}
+
+if (!is.factor(datos$educ_f)) {
+  stop("educ_f debe ser un factor")
+}
+
+if (!identical(levels(datos$y), c("Bajo", "Alto"))) {
+  stop("Revisar las categorias de ingreso")
+}
+
+
+niveles_educ_g6 <- levels(datos$educ_f)
+
+if (length(niveles_educ_g6) != 5) {
+  stop("Se esperaban cinco categorias educativas")
+}
+
+if (any(table(datos$educ_f) == 0)) {
+  stop("Existen categorias educativas sin trabajadores")
+}
+
+
+tabla_educ_g6 <- datos %>%
+  dplyr::count(
+    educ_f,
+    y,
+    name = "Trabajadores",
+    .drop = FALSE
+  ) %>%
+  dplyr::group_by(educ_f) %>%
+  dplyr::mutate(
+    Total_grupo = sum(Trabajadores),
+    Porcentaje = 100 * Trabajadores / Total_grupo
+  ) %>%
+  dplyr::ungroup()
+
+
+control_g6 <- tabla_educ_g6 %>%
+  dplyr::group_by(educ_f) %>%
+  dplyr::summarise(
+    Total = sum(Trabajadores),
+    Porcentaje_total = sum(Porcentaje),
+    .groups = "drop"
+  )
+
+if (any(abs(control_g6$Porcentaje_total - 100) > 1e-8)) {
+  stop("Los porcentajes no suman 100%")
+}
+
+if (sum(control_g6$Total) != nrow(datos)) {
+  stop("El total de trabajadores no coincide")
+}
+
+orden_educ_g6 <- tabla_educ_g6 %>%
+  dplyr::filter(y == "Alto") %>%
+  dplyr::arrange(dplyr::desc(Porcentaje)) %>%
+  dplyr::pull(educ_f) %>%
+  as.character()
+
+
+tabla_educ_g6 <- tabla_educ_g6 %>%
+  dplyr::mutate(
+
+    Etiqueta = paste0(
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+    Porcentaje_texto = paste0(
+      format(
+        Porcentaje,
+        digits = 15,
+        scientific = FALSE,
+        trim = TRUE,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+    Detalle = paste0(
+      "<b>Nivel educativo: ", educ_f, "</b>",
+      "<br>Nivel de ingreso: ", y,
+      "<br>Trabajadores: ",
+      formatC(
+        Trabajadores,
+        format = "d",
+        big.mark = "."
+      ),
+      "<br>Porcentaje dentro del grupo: ",
+      Porcentaje_texto,
+      "<br>Total del grupo: ",
+      formatC(
+        Total_grupo,
+        format = "d",
+        big.mark = "."
+      ),
+      "<extra></extra>"
+    )
+  )
+
+grafico_educ_g6 <- plotly::plot_ly() %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_educ_g6, y == "Bajo"),
+
+    x = ~Porcentaje,
+    y = ~educ_f,
+
+    name = "Ingreso Bajo",
+    orientation = "h",
+
+    marker = list(
+      color = "#DABFFF",
+      line = list(color = "white", width = 1)
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "none",
+
+    textfont = list(
+      size = 11,
+      color = "#30294F"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_educ_g6, y == "Alto"),
+
+    x = ~Porcentaje,
+    y = ~educ_f,
+
+    name = "Ingreso Alto",
+    orientation = "h",
+
+    marker = list(
+      color = "#907AD6",
+      line = list(color = "white", width = 1)
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "none",
+
+    textfont = list(
+      size = 11,
+      color = "white"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::layout(
+
+    barmode = "stack",
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 6. Nivel de ingreso laboral ",
+        "seg\u00fan nivel educativo",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Porcentaje de trabajadores por nivel educativo",
+      range = c(0, 100),
+      dtick = 20,
+      ticksuffix = "%",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    yaxis = list(
+      title = "",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = rev(orden_educ_g6),
+      showgrid = FALSE,
+      tickfont = list(size = 12)
+    ),
+
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.30,
+      traceorder = "normal"
+    ),
+
+    bargap = 0.30,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 180,
+      r = 35,
+      t = 110,
+      b = 125
+    ),
+
+    separators = ",.",
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    ),
+
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 12,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+
+grafico_educ_g6
+
+```
+
+### Tipo de empleado
+```{r TABLA4_TIPO_EMPLEADO}
+
+tabla_tipo_desc <- resumen_cat_desc(datos$tipo_emp)
+
+mostrar_cat_desc(
+  tabla_tipo_desc,
+  paste0(
+    "Tabla 4. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan tipo de empleado - GEIH 2024"
+  )
+)
+```
+
+```{r grafico7_tipo_ingreso}
+
+
+if (!all(c("tipo_emp", "y") %in% names(datos))) {
+  stop("Faltan las variables tipo_emp o y")
+}
+
+if (anyNA(datos[, c("tipo_emp", "y")])) {
+  stop("Existen registros sin clasificar")
+}
+
+if (!is.factor(datos$tipo_emp)) {
+  stop("La variable tipo_emp debe ser un factor")
+}
+
+if (!identical(levels(datos$y), c("Bajo", "Alto"))) {
+  stop("Revisar las categorias de ingreso")
+}
+
+
+niveles_tipo_g7 <- levels(datos$tipo_emp)
+
+tabla_tipo_g7 <- datos %>%
+  dplyr::count(
+    tipo_emp,
+    y,
+    name = "Trabajadores",
+    .drop = FALSE
+  ) %>%
+  dplyr::group_by(tipo_emp) %>%
+  dplyr::mutate(
+    Total_grupo = sum(Trabajadores),
+
+    Porcentaje = dplyr::if_else(
+      Total_grupo > 0,
+      100 * Trabajadores / Total_grupo,
+      NA_real_
+    )
+  ) %>%
+  dplyr::ungroup()
+
+control_g7 <- tabla_tipo_g7 %>%
+  dplyr::group_by(tipo_emp) %>%
+  dplyr::summarise(
+    Total = sum(Trabajadores),
+    Porcentaje_total = sum(Porcentaje),
+    .groups = "drop"
+  )
+
+if (anyNA(control_g7$Porcentaje_total)) {
+  stop("Existen categorias sin trabajadores")
+}
+
+if (any(abs(control_g7$Porcentaje_total - 100) > 1e-8)) {
+  stop("Los porcentajes no suman 100%")
+}
+
+if (sum(control_g7$Total) != nrow(datos)) {
+  stop("El total de trabajadores no coincide")
+}
+
+orden_tipo_g7 <- tabla_tipo_g7 %>%
+  dplyr::filter(y == "Alto") %>%
+  dplyr::arrange(dplyr::desc(Porcentaje)) %>%
+  dplyr::pull(tipo_emp) %>%
+  as.character()
+
+tabla_tipo_g7 <- tabla_tipo_g7 %>%
+  dplyr::mutate(
+
+    Etiqueta = paste0(
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+    Porcentaje_texto = paste0(
+      format(
+        Porcentaje,
+        digits = 15,
+        scientific = FALSE,
+        trim = TRUE,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+    Detalle = paste0(
+      "<b>Tipo de empleado: ", tipo_emp, "</b>",
+      "<br>Nivel de ingreso: ", y,
+      "<br>Trabajadores: ",
+      formatC(
+        Trabajadores,
+        format = "d",
+        big.mark = "."
+      ),
+      "<br>Porcentaje dentro del grupo: ",
+      Porcentaje_texto,
+      "<br>Total del grupo: ",
+      formatC(
+        Total_grupo,
+        format = "d",
+        big.mark = "."
+      ),
+      "<extra></extra>"
+    )
+  )
+
+grafico_tipo_g7 <- plotly::plot_ly() %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(
+      tabla_tipo_g7,
+      y == "Bajo"
+    ),
+
+    x = ~Porcentaje,
+    y = ~tipo_emp,
+
+    name = "Ingreso Bajo",
+    orientation = "h",
+
+    marker = list(
+      color = "#DABFFF",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "inside",
+
+    textfont = list(
+      size = 12,
+      color = "#30294F"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+
+  plotly::add_bars(
+    data = dplyr::filter(
+      tabla_tipo_g7,
+      y == "Alto"
+    ),
+
+    x = ~Porcentaje,
+    y = ~tipo_emp,
+
+    name = "Ingreso Alto",
+    orientation = "h",
+
+    marker = list(
+      color = "#907AD6",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "inside",
+
+    textfont = list(
+      size = 12,
+      color = "white"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::layout(
+
+    barmode = "stack",
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 7. Nivel de ingreso laboral ",
+        "seg\u00fan tipo de empleado",
+        "<br><sup>GEIH, enero de 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Porcentaje de trabajadores por tipo de empleado",
+      range = c(0, 100),
+      dtick = 20,
+      ticksuffix = "%",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    yaxis = list(
+      title = "",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = rev(orden_tipo_g7),
+      showgrid = FALSE,
+      tickfont = list(size = 11)
+    ),
+
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.30,
+      traceorder = "normal"
+    ),
+
+    bargap = 0.30,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 270,
+      r = 35,
+      t = 110,
+      b = 125
+    ),
+
+    separators = ",.",
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    ),
+
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 12,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+grafico_tipo_g7
+
+```
+
+### Sexo
+```{r TABLA5_SEXO}
+
+tabla_sexo_desc <- resumen_cat_desc(datos$sexo_f)
+mostrar_cat_desc(
+  tabla_sexo_desc,
+  paste0(
+    "Tabla 5. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan sexo - GEIH 2024"
+  )
+)
+```
+
+```{r grafico8_sexo_ingreso}
+
+if (!all(c("sexo_f", "y") %in% names(datos))) {
+  stop("Faltan las variables sexo_f o y")
+}
+
+if (anyNA(datos[, c("sexo_f", "y")])) {
+  stop("Existen registros sin clasificar")
+}
+
+niveles_sexo_g8 <- c("Hombre", "Mujer")
+
+if (!identical(levels(datos$sexo_f), niveles_sexo_g8)) {
+  stop("Revisar las categorias de sexo_f")
+}
+
+if (!identical(levels(datos$y), c("Bajo", "Alto"))) {
+  stop("Revisar las categorias de ingreso")
+}
+
+tabla_sexo_g8 <- datos %>%
+  dplyr::count(
+    sexo_f,
+    y,
+    name = "Trabajadores",
+    .drop = FALSE
+  ) %>%
+  dplyr::group_by(sexo_f) %>%
+  dplyr::mutate(
+    Total_grupo = sum(Trabajadores),
+
+    Porcentaje = dplyr::if_else(
+      Total_grupo > 0,
+      100 * Trabajadores / Total_grupo,
+      0
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Total_grupo > 0) %>%
+  dplyr::mutate(
+
+    Etiqueta = dplyr::if_else(
+      Porcentaje >= 7,
+      paste0(
+        formatC(
+          Porcentaje,
+          format = "f",
+          digits = 1,
+          decimal.mark = ","
+        ),
+        "%"
+      ),
+      ""
+    ),
+
+    Detalle = paste0(
+      "<b>Sexo: ", sexo_f, "</b>",
+      "<br>Nivel de ingreso: ", y,
+      "<br>Trabajadores: ",
+      formatC(
+        Trabajadores,
+        format = "d",
+        big.mark = "."
+      ),
+      "<br>Porcentaje dentro del grupo: ",
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ),
+      "%",
+      "<br>Total del grupo: ",
+      formatC(
+        Total_grupo,
+        format = "d",
+        big.mark = "."
+      ),
+      "<extra></extra>"
+    )
+  )
+control_g8 <- tabla_sexo_g8 %>%
+  dplyr::group_by(sexo_f) %>%
+  dplyr::summarise(
+    Total = sum(Trabajadores),
+    Porcentaje_total = sum(Porcentaje),
+    .groups = "drop"
+  )
+
+if (any(abs(control_g8$Porcentaje_total - 100) > 1e-8)) {
+  stop("Los porcentajes no suman 100%")
+}
+
+if (sum(control_g8$Total) != nrow(datos)) {
+  stop("El total de trabajadores no coincide")
+}
+
+grafico_sexo_g8 <- plotly::plot_ly() %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_sexo_g8, y == "Bajo"),
+
+    x = ~Porcentaje,
+    y = ~sexo_f,
+
+    name = "Ingreso Bajo",
+    orientation = "h",
+
+    marker = list(
+      color = "#DABFFF",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+
+    textfont = list(
+      size = 13,
+      color = "#30294F"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_sexo_g8, y == "Alto"),
+
+    x = ~Porcentaje,
+    y = ~sexo_f,
+
+    name = "Ingreso Alto",
+    orientation = "h",
+
+    marker = list(
+      color = "#907AD6",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+
+    textfont = list(
+      size = 13,
+      color = "white"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::layout(
+
+    barmode = "stack",
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 8. Nivel de ingreso laboral ",
+        "seg\u00fan sexo",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Porcentaje de trabajadores por sexo",
+      range = c(0, 100),
+      dtick = 20,
+      ticksuffix = "%",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    yaxis = list(
+      title = "",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = rev(niveles_sexo_g8),
+      showgrid = FALSE,
+      tickfont = list(size = 13)
+    ),
+
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.30
+    ),
+
+    bargap = 0.40,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 100,
+      r = 35,
+      t = 110,
+      b = 125
+    ),
+
+    separators = ",.",
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    ),
+
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 13,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+
+grafico_sexo_g8
+
+```
+
+
+### Zona de residencia
+```{r TABLA6_ZONA_RESIDENCIA}
+tabla_zona_desc <- resumen_cat_desc(datos$zona_f)
+mostrar_cat_desc(
+  tabla_zona_desc,
+  paste0(
+    "Tabla 6. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan zona de residencia - GEIH 2024"
+  )
+)
+```
+
+```{r grafico9_zona_ingreso}
+
+if (!all(c("zona_f", "y") %in% names(datos))) {
+  stop("Faltan las variables zona_f o y")
+}
+
+if (anyNA(datos[, c("zona_f", "y")])) {
+  stop("Existen registros sin clasificar")
+}
+
+if (!is.factor(datos$zona_f)) {
+  stop("La variable zona_f debe ser un factor")
+}
+
+if (!identical(levels(datos$y), c("Bajo", "Alto"))) {
+  stop("Revisar las categorias de ingreso")
+}
+
+# 2. CONSERVAR LAS CATEGORIAS ORIGINALES
+
+niveles_zona_g9 <- levels(datos$zona_f)
+
+if (!identical(niveles_zona_g9, c("Urbano", "Rural"))) {
+  stop("Revisar las categorias de zona_f")
+}
+
+# 3. CALCULAR FRECUENCIAS Y PORCENTAJES
+tabla_zona_g9 <- datos %>%
+  dplyr::count(
+    zona_f,
+    y,
+    name = "Trabajadores",
+    .drop = FALSE
+  ) %>%
+  dplyr::group_by(zona_f) %>%
+  dplyr::mutate(
+    Total_grupo = sum(Trabajadores),
+
+    Porcentaje = dplyr::if_else(
+      Total_grupo > 0,
+      100 * Trabajadores / Total_grupo,
+      NA_real_
+    )
+  ) %>%
+  dplyr::ungroup()
+
+control_g9 <- tabla_zona_g9 %>%
+  dplyr::group_by(zona_f) %>%
+  dplyr::summarise(
+    Total = sum(Trabajadores),
+    Porcentaje_total = sum(Porcentaje),
+    .groups = "drop"
+  )
+
+if (anyNA(control_g9$Porcentaje_total)) {
+  stop("Existen zonas sin trabajadores")
+}
+
+if (any(abs(control_g9$Porcentaje_total - 100) > 1e-8)) {
+  stop("Los porcentajes no suman 100%")
+}
+
+
+if (sum(control_g9$Total) != nrow(datos)) {
+  stop("El total de trabajadores no coincide")
+}
+
+orden_zona_g9 <- tabla_zona_g9 %>%
+  dplyr::filter(y == "Alto") %>%
+  dplyr::arrange(dplyr::desc(Porcentaje)) %>%
+  dplyr::pull(zona_f) %>%
+  as.character()
+
+
+tabla_zona_g9 <- tabla_zona_g9 %>%
+  dplyr::mutate(
+
+    Etiqueta = paste0(
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+
+    Porcentaje_texto = paste0(
+      format(
+        Porcentaje,
+        digits = 15,
+        scientific = FALSE,
+        trim = TRUE,
+        decimal.mark = ","
+      ),
+      "%"
+    ),
+
+    Detalle = paste0(
+      "<b>Zona de residencia: ", zona_f, "</b>",
+      "<br>Nivel de ingreso: ", y,
+      "<br>Trabajadores: ",
+      formatC(
+        Trabajadores,
+        format = "d",
+        big.mark = "."
+      ),
+      "<br>Porcentaje dentro del grupo: ",
+      Porcentaje_texto,
+      "<br>Total del grupo: ",
+      formatC(
+        Total_grupo,
+        format = "d",
+        big.mark = "."
+      ),
+      "<extra></extra>"
+    )
+  )
+
+grafico_zona_g9 <- plotly::plot_ly() %>%
+
+
+  plotly::add_bars(
+    data = dplyr::filter(
+      tabla_zona_g9,
+      y == "Bajo"
+    ),
+
+    x = ~Porcentaje,
+    y = ~zona_f,
+
+    name = "Ingreso Bajo",
+    orientation = "h",
+
+    marker = list(
+      color = "#DABFFF",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "inside",
+
+    textfont = list(
+      size = 13,
+      color = "#30294F"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  # INGRESO ALTO
+
+  plotly::add_bars(
+    data = dplyr::filter(
+      tabla_zona_g9,
+      y == "Alto"
+    ),
+
+    x = ~Porcentaje,
+    y = ~zona_f,
+
+    name = "Ingreso Alto",
+    orientation = "h",
+
+    marker = list(
+      color = "#907AD6",
+      line = list(
+        color = "white",
+        width = 1
+      )
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+    constraintext = "inside",
+
+    textfont = list(
+      size = 13,
+      color = "white"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::layout(
+
+    barmode = "stack",
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 9. Nivel de ingreso laboral ",
+        "seg\u00fan zona de residencia",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center"
+    ),
+
+
+    xaxis = list(
+      title = "Porcentaje de trabajadores por zona",
+      range = c(0, 100),
+      dtick = 20,
+      ticksuffix = "%",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    yaxis = list(
+      title = "",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = rev(orden_zona_g9),
+      showgrid = FALSE,
+      tickfont = list(size = 13)
+    ),
+
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.30,
+      traceorder = "normal"
+    ),
+    
+    bargap = 0.40,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 115,
+      r = 35,
+      t = 110,
+      b = 125
+    ),
+
+    separators = ",.",
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      size = 13,
+      color = "#30294F"
+    ),
+
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 12,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+grafico_zona_g9
+
+
+```
+
+### Estado civil
+```{r TABLA8_Estado_civil}
+
+tabla_estado_desc <- resumen_cat_desc(datos$est_civil_f)
+mostrar_cat_desc(
+  tabla_estado_desc,
+  paste0(
+    "Tabla 7. Distribuci\u00f3n de trabajadores ",
+    "seg\u00fan estado civil - GEIH 2024"
+  )
+)
+```
+
+```{r grafico10_estado_ingreso}
+
+
+if (!all(c("est_civil_f", "y") %in% names(datos))) {
+  stop("Faltan las variables est_civil_f o y")
+}
+
+if (anyNA(datos[, c("est_civil_f", "y")])) {
+  stop("Existen registros sin clasificar")
+}
+
+if (!is.factor(datos$est_civil_f)) {
+  stop("La variable est_civil_f debe ser un factor")
+}
+
+if (!identical(levels(datos$y), c("Bajo", "Alto"))) {
+  stop("Revisar las categorias de ingreso")
+}
+
+
+tabla_estado_g10 <- datos %>%
+  dplyr::count(
+    est_civil_f,
+    y,
+    name = "Trabajadores",
+    .drop = FALSE
+  ) %>%
+  dplyr::group_by(est_civil_f) %>%
+  dplyr::mutate(
+    Total_grupo = sum(Trabajadores),
+
+    Porcentaje = dplyr::if_else(
+      Total_grupo > 0,
+      100 * Trabajadores / Total_grupo,
+      0
+    )
+  ) %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(Total_grupo > 0) %>%
+  dplyr::mutate(
+    Etiqueta = dplyr::if_else(
+      Porcentaje >= 7,
+      paste0(
+        formatC(
+          Porcentaje,
+          format = "f",
+          digits = 1,
+          decimal.mark = ","
+        ),
+        "%"
+      ),
+      ""
+    ),
+
+    Detalle = paste0(
+      "<b>Estado civil: ", est_civil_f, "</b>",
+      "<br>Nivel de ingreso: ", y,
+      "<br>Trabajadores: ",
+      formatC(
+        Trabajadores,
+        format = "d",
+        big.mark = "."
+      ),
+      "<br>Porcentaje dentro de la categor\u00eda: ",
+      formatC(
+        Porcentaje,
+        format = "f",
+        digits = 1,
+        decimal.mark = ","
+      ),
+      "%",
+      "<br>Total de la categor\u00eda: ",
+      formatC(
+        Total_grupo,
+        format = "d",
+        big.mark = "."
+      ),
+      "<extra></extra>"
+    )
+  )
+
+control_g10 <- tabla_estado_g10 %>%
+  dplyr::group_by(est_civil_f) %>%
+  dplyr::summarise(
+    Total = sum(Trabajadores),
+    Porcentaje_total = sum(Porcentaje),
+    .groups = "drop"
+  )
+
+if (any(abs(control_g10$Porcentaje_total - 100) > 1e-8)) {
+  stop("Los porcentajes no suman 100%")
+}
+
+if (sum(control_g10$Total) != nrow(datos)) {
+  stop("El total de trabajadores no coincide")
+}
+
+
+orden_estado_g10 <- tabla_estado_g10 %>%
+  dplyr::filter(y == "Alto") %>%
+  dplyr::arrange(dplyr::desc(Porcentaje)) %>%
+  dplyr::pull(est_civil_f) %>%
+  as.character()
+
+grafico_estado_g10 <- plotly::plot_ly() %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_estado_g10, y == "Bajo"),
+
+    x = ~Porcentaje,
+    y = ~est_civil_f,
+
+    name = "Ingreso Bajo",
+    orientation = "h",
+
+    marker = list(
+      color = "#DABFFF",
+      line = list(color = "white", width = 1)
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+
+    textfont = list(
+      size = 12,
+      color = "#30294F"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::add_bars(
+    data = dplyr::filter(tabla_estado_g10, y == "Alto"),
+
+    x = ~Porcentaje,
+    y = ~est_civil_f,
+
+    name = "Ingreso Alto",
+    orientation = "h",
+
+    marker = list(
+      color = "#907AD6",
+      line = list(color = "white", width = 1)
+    ),
+
+    text = ~Etiqueta,
+    textposition = "inside",
+    insidetextanchor = "middle",
+
+    textfont = list(
+      size = 12,
+      color = "white"
+    ),
+
+    hovertemplate = ~Detalle
+  ) %>%
+
+  plotly::layout(
+
+    barmode = "stack",
+
+    title = list(
+      text = paste0(
+        "Gr\u00e1fico 10. Nivel de ingreso laboral ",
+        "seg\u00fan estado civil",
+        "<br><sup>GEIH, 2024 | ",
+        "Ingreso Alto: superior a $1.300.000</sup>"
+      ),
+
+      x = 0.5,
+      xanchor = "center",
+
+      font = list(
+        size = 18,
+        color = "#30294F"
+      )
+    ),
+
+    xaxis = list(
+      title = "Porcentaje de trabajadores por estado civil",
+      range = c(0, 100),
+      dtick = 20,
+      ticksuffix = "%",
+      gridcolor = "#ECE9F3",
+      zeroline = FALSE
+    ),
+
+    yaxis = list(
+      title = "",
+      type = "category",
+      categoryorder = "array",
+      categoryarray = rev(orden_estado_g10),
+      showgrid = FALSE,
+      tickfont = list(size = 11)
+    ),
+
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.30,
+      traceorder = "normal"
+    ),
+
+    bargap = 0.30,
+
+    plot_bgcolor = "white",
+    paper_bgcolor = "white",
+
+    margin = list(
+      l = 235,
+      r = 35,
+      t = 110,
+      b = 125
+    ),
+
+    separators = ",.",
+
+    font = list(
+      family = "Spectral, Georgia, serif",
+      color = "#30294F"
+    ),
+
+    hoverlabel = list(
+      bgcolor = "white",
+      font = list(
+        size = 13,
+        color = "#30294F"
+      )
+    )
+  ) %>%
+
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
+
+grafico_estado_g10
+
+```
+
+
+# Resultados del modelo
+
+```{r verificar-vars}
+# ==============================================================================
+# 2. VERIFICACIÓN DE VARIABLES DEL MODELO
+# ==============================================================================
+
+vars_modelo <- c("edad", "edad2", "antig", "horas", "educ_f", "tipo_emp",
+                 "sexo_f", "zona_f", "est_civil_f", "y")
+
+# Comprobar que no falte ninguna variable
+faltan <- setdiff(vars_modelo, names(datos))
+
+if (length(faltan) > 0) {
+  stop("Faltan estas columnas en 'datos': ", paste(faltan, collapse = ", "))
+} else {
+  message("¡Todas las variables requeridas están correctamente preparadas!")
+}
+```
+
+```{r split}
+# ==============================================================================
+# 1. PARTISIÓN ESTRATIFICADA DE DATOS (TRAIN / TEST)
+# ==============================================================================
+
+set.seed(2025)
+idx   <- createDataPartition(datos$y, p = 0.70, list = FALSE)
+train <- datos[idx, ]  %>% as.data.frame()
+test  <- datos[-idx, ] %>% as.data.frame()
+
+# Tabla de resumen de observaciones y distribución por conjunto
+tibble(
+  Conjunto = c("Entrenamiento", "Prueba"),
+  Observaciones = c(nrow(train), nrow(test)),
+  `Clase positiva (Alto)` = c(sum(train$y == "Alto"), sum(test$y == "Alto")),
+  `% clase positiva` = percent(c(mean(train$y == "Alto"), mean(test$y == "Alto")), accuracy = 0.1)
+) %>%
+  tabla(caption = "Distribución de Observaciones en la Partición de Datos",
+        format.args = list(big.mark = "."))
+
+```
+
+## Definición de la fórmula general del modelo
+
+```{r formula}
+
+fml <- y ~ edad + edad2 + antig + horas + educ_f + tipo_emp +
+  sexo_f + zona_f + est_civil_f
+```
+
+```{r knn-class-prep}
+# ==============================================================================
+# 3. PREPARACIÓN DE MATRICES DUMMY Y ESTANDARIZACIÓN Z-SCORE
+# ==============================================================================
+
+library(class)
+
+f_x <- ~ edad + edad2 + antig + horas + educ_f + tipo_emp +
+  sexo_f + zona_f + est_civil_f
+
+# Matriz de diseño (sin intercepto)
+X_train <- model.matrix(f_x, data = train)[, -1]
+X_test  <- model.matrix(f_x, data = test)[, -1]
+
+# Se eliminan columnas constantes en entrenamiento (desviación estándar igual a 0)
+const   <- apply(X_train, 2, sd) == 0
+X_train <- X_train[, !const, drop = FALSE]
+X_test  <- X_test[,  !const, drop = FALSE]
+
+# Estandarización Z-score de variables numéricas usando parámetros del entrenamiento
+vars_num <- c("edad", "edad2", "antig", "horas")
+medias   <- colMeans(X_train[, vars_num])
+desv     <- apply(X_train[, vars_num], 2, sd)
+
+X_train[, vars_num] <- scale(X_train[, vars_num], center = medias, scale = desv)
+X_test[,  vars_num] <- scale(X_test[,  vars_num], center = medias, scale = desv)
+```
+
+```{r knn-class-loop, cache=TRUE}
+# ==============================================================================
+# 4. EVALUACIÓN DE VECINOS K (1 A 100) Y BÚSQUEDA DEL K ÓPTIMO
+# ==============================================================================
+
+set.seed(2025)
+ks    <- 1:100
+acc_k <- numeric(length(ks))
+
+for (i in seq_along(ks)) {
+  pred_i   <- knn(train = X_train, test = X_test, cl = train$y, k = ks[i])
+  acc_k[i] <- mean(pred_i == test$y)
+}
+
+res_class   <- tibble(k = ks, Accuracy = acc_k)
+k_opt_class <- res_class$k[which.max(res_class$Accuracy)]
+acc_opt     <- max(res_class$Accuracy)
+```
+
+```{r g-knn-class}
+# ==============================================================================
+# 5. GRÁFICO INTERACTIVO DE ACCURACY VS. K
+# ==============================================================================
+
+res_class <- res_class %>%
+  mutate(tooltip = paste0("k = ", k, "<br>Accuracy: ", round(Accuracy, 4)))
+
+p_acc <- ggplot(res_class, aes(k, Accuracy, text = tooltip, group = 1)) +
+  geom_line(colour = pal[["lake"]], linewidth = 0.8) +
+  geom_point(colour = pal[["lake"]], size = 1.6) +
+  geom_vline(xintercept = k_opt_class, linetype = "dashed", colour = pal[["indigo"]]) +
+  geom_point(data = filter(res_class, k == k_opt_class), colour = pal[["periwinkle"]], size = 4) +
+  labs(title = paste0("Accuracy vs. k (KNN class) · k óptimo = ", k_opt_class),
+       x = "Número de vecinos (k)", y = "Accuracy en la muestra de prueba")
+
+interactivo(p_acc, tooltip = "text")
+```
+
+```{r knn-class-final}
+# ==============================================================================
+# 6. EVALUACIÓN FINAL DEL MODELO KNN CON K ÓPTIMO
+# ==============================================================================
+
+# Predicción final con el k óptimo
+pred_knn <- knn(train = X_train, test = X_test, cl = train$y, k = k_opt_class, prob = TRUE)
+
+# Guardar probabilidades de la clase positiva "Alto" para la matriz de confusión y ROC
+prob_knn <- attr(pred_knn, "prob")
+p_knn    <- if_else(pred_knn == "Alto", prob_knn, 1 - prob_knn)
+
+# Matriz de confusión
+cm_knn <- confusionMatrix(pred_knn, test$y, positive = "Alto")
+
+# Función generadora de la tabla de métricas del modelo KNN
+metricas_cm <- function(pred, real, modelo = "", auc_val = NA) {
+  cm <- confusionMatrix(pred, real, positive = "Alto")
+  tibble(
+    Modelo             = modelo,
+    Exactitud          = cm$overall["Accuracy"],
+    Sensibilidad       = cm$byClass["Sensitivity"],
+    Especificidad      = cm$byClass["Specificity"],
+    Precisión          = cm$byClass["Pos Pred Value"],
+    `Balanced Accuracy` = cm$byClass["Balanced Accuracy"],
+    Kappa              = cm$overall["Kappa"],
+    AUC                = auc_val
+  ) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 4)))
+}
+
+# Cálculo del AUC para KNN
+roc_knn_obj <- roc(test$y, p_knn, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
+auc_knn_val <- as.numeric(auc(roc_knn_obj))
+
+# Tabla con el resumen completo de métricas
+tabla_knn_resumen <- metricas_cm(pred_knn, test$y, modelo = paste0("KNN (k = ", k_opt_class, ")"), auc_val = auc_knn_val)
+
+tabla(tabla_knn_resumen, caption = "Métricas de Evaluación del Modelo KNN con k Óptimo",
+      format.args = list(decimal.mark = ","))
+```
+
+```{r logit-modelo}
+# ==============================================================================
+# 1. PREPARACIÓN Y AJUSTE DEL MODELO LOGIT COMPLETO
+# ==============================================================================
+
+# Forzamos a que 'train' y 'test' sean data.frame explícitamente
+train_df <- as.data.frame(train)
+test_df  <- as.data.frame(test)
+
+# Creación de variables categóricas etiquetadas para el modelo
+train_df <- train_df %>%
+  mutate(
+    sexo_f = factor(P3271, levels = c(1, 2), labels = c("Hombre", "Mujer")),
+    zona_f = factor(CLASE, levels = c(1, 2), labels = c("Urbano", "Rural")),
+    est_civil_f = factor(P6070, levels = 1:6, labels = c(
+      "No está casado(a) y vive en pareja hace menos de 2 años",
+      "No está casado(a) y vive en pareja hace 2 años o más",
+      "Está casado(a)",
+      "Está separado(a) o divorciado(a)",
+      "Está viudo(a)",
+      "Está soltero(a)"
+    ))
+  )
+
+test_df <- test_df %>%
+  mutate(
+    sexo_f = factor(P3271, levels = c(1, 2), labels = c("Hombre", "Mujer")),
+    zona_f = factor(CLASE, levels = c(1, 2), labels = c("Urbano", "Rural")),
+    est_civil_f = factor(P6070, levels = 1:6, labels = c(
+      "No está casado(a) y vive en pareja hace menos de 2 años",
+      "No está casado(a) y vive en pareja hace 2 años o más",
+      "Está casado(a)",
+      "Está separado(a) o divorciado(a)",
+      "Está viudo(a)",
+      "Está soltero(a)"
+    ))
+  )
+
+# Definición de la fórmula con tus 9 variables independientes
+fml_completa <- y ~ edad + edad2 + horas + antig + educ_f + tipo_emp + sexo_f + zona_f + est_civil_f
+
+# Ajuste del modelo de Regresión Logística
+logit <- glm(fml_completa, data = train_df, family = binomial)
+
+# Resumen de coeficientes e Intervalos de Confianza al 95%
+co <- summary(logit)$coefficients
+ci <- confint.default(logit)
+
+# Tabla 1: Coeficientes, Odds Ratios e Intervalos de Confianza
+tabla_logit_coef <- tibble(
+  Término      = rownames(co),
+  Coeficiente  = co[, 1],
+  `Odds ratio` = exp(co[, 1]),
+  `IC 95% inf` = exp(ci[, 1]),
+  `IC 95% sup` = exp(ci[, 2]),
+  `p-valor`    = co[, 4]
+) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4)))
+
+# Presentación de la tabla con formato kable
+tabla(tabla_logit_coef, caption = "Tabla de Coeficientes y Odds Ratios del Modelo Logit Completo",
+      format.args = list(decimal.mark = ","))
+```
+
+```{r logit-or-incrementos}
+# ==============================================================================
+# 2. ODDS RATIOS PARA INCREMENTOS PRACTICOS EN LAS VARIABLES
+# ==============================================================================
+
+b <- coef(logit)
+
+tabla_or_incrementos <- tibble(
+  Cambio = c(
+    "+10 años de Edad",
+    "+100 en Edad²",
+    "+10 horas semanales",
+    "+12 meses de Antigüedad",
+    "Ser Mujer (vs Hombre)",
+    "Zona Rural (vs Urbano)"
+  ),
+  `Odds Ratio` = round(exp(unname(c(
+    10 * b["edad"],
+    100 * b["edad2"],
+    10 * b["horas"],
+    12 * b["antig"],
+    b["sexo_fMujer"],
+    b["zona_fRural"]
+  ))), 3)
+)
+
+tabla(tabla_or_incrementos, caption = "Odds Ratios para Cambios Clave en las Variables Explicativas",
+      format.args = list(decimal.mark = ","))
+```
+
+```{r logit-roc-umbral}
+# ==============================================================================
+# 1. CÁLCULO DE PROBABILIDADES PREDICHAS Y CURVA ROC
+# ==============================================================================
+
+# Probabilidades predichas de la clase 'Alto' sobre el conjunto de prueba
+p_logit <- predict(logit, newdata = test_df, type = "response")
+
+# Curva ROC con pROC
+roc_logit <- roc(test_df$y, p_logit, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
+auc_logit <- as.numeric(auc(roc_logit))
+
+# Umbral óptimo según el índice de Youden (maximiza Sensibilidad + Especificidad - 1)
+umbral_youden <- as.numeric(coords(roc_logit, x = "best", best.method = "youden", ret = "threshold"))
+
+# ==============================================================================
+# 2. GRÁFICO DE DESEMPEÑO SEGÚN EL UMBRAL DE DECISIÓN (CUTOFF)
+# ==============================================================================
+
+# Función para evaluar métricas a diferentes niveles de corte (cutoff)
+performa <- function(cutoff, prob, ref) {
+  predict <- factor(if_else(prob >= cutoff, "Alto", "Bajo"), levels = levels(ref))
+  conf <- confusionMatrix(predict, ref, positive = "Alto")
+  c(
+    Sensibilidad  = conf$byClass["Sensitivity"],
+    Exactitud     = conf$overall["Accuracy"],
+    Precisión     = conf$byClass["Pos Pred Value"],
+    Especificidad = conf$byClass["Specificity"]
+  )
+}
+
+# Rango de umbrales a evaluar (de 0.01 a 0.80)
+co <- seq(0.01, 0.80, length = 80)
+res_cutoff <- as.data.frame(t(sapply(co, performa, prob = p_logit, ref = test_df$y)))
+res_cutoff$Cutoff <- co
+
+# Gráfico interactivo con ggplotly
+p_cutoff <- res_cutoff %>%
+  pivot_longer(-Cutoff, names_to = "Métrica", values_to = "Valor") %>%
+  ggplot(aes(x = Cutoff, y = Valor, color = Métrica)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = umbral_youden, linetype = "dashed", color = pal[["indigo"]]) +
+  scale_color_manual(values = c(
+    Sensibilidad  = pal[["grape"]],
+    Exactitud     = pal[["lake"]],
+    Precisión     = pal[["periwinkle"]],
+    Especificidad = pal[["mauve"]]
+  )) +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    title = paste("Desempeño del Modelo Logit según el Umbral (Youden = ", round(umbral_youden, 3), ")"),
+    x = "Umbral de Decisión (Cutoff)",
+    y = "Valor de la Métrica"
+  )
+
+interactivo(p_cutoff, leyenda_abajo = TRUE)
+```
+
+```{r logit-metricas-tablas}
+# ==============================================================================
+# EVALUACIÓN CON UMBRAL ESTÁNDAR (0.5) Y UMBRAL ÓPTIMO (YOUDEN)
+# ==============================================================================
+
+# Predicciones con umbral 0.5
+pred_logit_05 <- factor(if_else(p_logit >= 0.5, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
+cm_logit_05   <- confusionMatrix(pred_logit_05, test_df$y, positive = "Alto")
+
+# Predicciones con umbral óptimo de Youden
+pred_logit_youden <- factor(if_else(p_logit >= umbral_youden, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
+cm_logit_youden   <- confusionMatrix(pred_logit_youden, test_df$y, positive = "Alto")
+
+# Tabla comparativa de métricas del Logit según el umbral
+tabla_eval_logit <- tibble(
+  `Umbral de Decisión` = c("Estándar (0,50)", paste0("Óptimo Youden (", round(umbral_youden, 3), ")")),
+  Exactitud            = c(cm_logit_05$overall["Accuracy"], cm_logit_youden$overall["Accuracy"]),
+  Sensibilidad         = c(cm_logit_05$byClass["Sensitivity"], cm_logit_youden$byClass["Sensitivity"]),
+  Especificidad        = c(cm_logit_05$byClass["Specificity"], cm_logit_youden$byClass["Specificity"]),
+  Precisión            = c(cm_logit_05$byClass["Pos Pred Value"], cm_logit_youden$byClass["Pos Pred Value"]),
+  `Balanced Accuracy`  = c(cm_logit_05$byClass["Balanced Accuracy"], cm_logit_youden$byClass["Balanced Accuracy"]),
+  Kappa                = c(cm_logit_05$overall["Kappa"], cm_logit_youden$overall["Kappa"]),
+  AUC                  = c(auc_logit, auc_logit)
+) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4)))
+
+tabla(tabla_eval_logit, caption = "Métricas de Evaluación del Modelo Logit según el Umbral Utilizado",
+      format.args = list(decimal.mark = ","))
+```
+
+```{r comparacion-modelos-final}
+# ==============================================================================
+# 1. TABLA COMPARATIVA INTEGRAL DE MÉTRICAS
+# ==============================================================================
+
+# Si KNN ya está en el entorno (knn_fit / p_knn / cm_knn), unimos métricas:
+if (exists("p_knn") && exists("cm_knn")) {
+  roc_knn <- roc(test_df$y, p_knn, levels = c("Bajo", "Alto"), direction = "<", quiet = TRUE)
+  auc_knn <- as.numeric(auc(roc_knn))
+  
+  comp_integral <- tibble(
+    Métrica = c("Exactitud (Accuracy)", "Sensibilidad (Recall)", "Especificidad", 
+                "Precisión (Pos Pred Value)", "Balanced Accuracy", "Kappa", "AUC"),
+    Logit   = c(cm_logit_05$overall["Accuracy"], cm_logit_05$byClass["Sensitivity"], 
+                cm_logit_05$byClass["Specificity"], cm_logit_05$byClass["Pos Pred Value"], 
+                cm_logit_05$byClass["Balanced Accuracy"], cm_logit_05$overall["Kappa"], auc_logit),
+    KNN     = c(cm_knn$overall["Accuracy"], cm_knn$byClass["Sensitivity"], 
+                cm_knn$byClass["Specificity"], cm_knn$byClass["Pos Pred Value"], 
+                cm_knn$byClass["Balanced Accuracy"], cm_knn$overall["Kappa"], auc_knn)
+  ) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 4)))
+  
+  tabla(comp_integral, caption = "Comparación Integral de Desempeño entre los Modelos Logit y KNN",
+        format.args = list(decimal.mark = ","))
+} else {
+  # Si tu compañero aún no ha unido la parte de KNN, se muestra el resumen de Logit:
+  tabla(tabla_eval_logit, caption = "Resumen de Métricas del Modelo Logit (Umbral 0.5 vs Youden)",
+        format.args = list(decimal.mark = ","))
+}
+```
+
+```{r curvas-roc-comparadas}
+# ==============================================================================
+# CURVAS ROC SUPERPUESTAS EN LA MUESTRA DE PRUEBA
+# ==============================================================================
+
+if (exists("roc_knn")) {
+  lab_logit <- paste0("Logit (AUC = ", round(auc_logit, 3), ")")
+  lab_knn   <- paste0("KNN (AUC = ", round(auc_knn, 3), ")")
+  
+  roc_df <- bind_rows(
+    tibble(Modelo = lab_logit, fpr = 1 - roc_logit$specificities, tpr = roc_logit$sensitivities),
+    tibble(Modelo = lab_knn,   fpr = 1 - roc_knn$specificities,   tpr = roc_knn$sensitivities)
+  ) %>%
+    mutate(fpr = round(fpr, 3), tpr = round(tpr, 3)) %>%
+    distinct()
+  
+  p_roc_comp <- ggplot(roc_df, aes(x = fpr, y = tpr, color = Modelo)) +
+    geom_segment(aes(x = 0, y = 0, xend = 1, yend = 1), linetype = "dashed", color = pal[["mauve"]]) +
+    geom_line(linewidth = 1.1) +
+    scale_color_manual(values = setNames(c(col_modelo[["Logit"]], col_modelo[["KNN"]]),
+                                         c(lab_logit, lab_knn))) +
+    scale_x_continuous(limits = c(0, 1)) +
+    scale_y_continuous(limits = c(0, 1)) +
+    labs(
+      title = "Curvas ROC Comparadas en Muestra de Prueba",
+      x = "1 - Especificidad (Tasa de Falsos Positivos)",
+      y = "Sensibilidad (Tasa de Verdaderos Positivos)"
+    )
+  
+  interactivo(p_roc_comp, leyenda_abajo = TRUE)
+}
+```
+
+## Respuesta a las preguntas del taller
+
+```{r resumen-auto}
+# Objetos que usa el texto de abajo
+auc_knn     <- auc_knn_val
+umbral_prev <- mean(train$y == "Alto")
+
+evalua <- function(prob, real, umbral = 0.5, modelo = "", auc_val = NA) {
+  pred <- factor(if_else(prob >= umbral, "Alto", "Bajo"), levels = c("Bajo", "Alto"))
+  cm   <- confusionMatrix(pred, real, positive = "Alto")
+  tibble(
+    Modelo        = modelo,
+    Exactitud     = cm$overall[["Accuracy"]],
+    Sensibilidad  = cm$byClass[["Sensitivity"]],
+    Especificidad = cm$byClass[["Specificity"]],
+    AUC           = auc_val
+  )
+}
+
+comp_05 <- bind_rows(
+  evalua(p_logit, test$y, 0.5, "Logit", auc_logit),
+  evalua(p_knn,   test$y, 0.5, "KNN",   auc_knn)
+)
+
+comp_prev <- bind_rows(
+  evalua(p_logit, test$y, umbral_prev, "Logit", auc_logit),
+  evalua(p_knn,   test$y, umbral_prev, "KNN",   auc_knn)
+)
+
+mejor_acc  <- comp_05$Modelo[which.max(comp_05$Exactitud)]
+mejor_sens <- comp_05$Modelo[which.max(comp_05$Sensibilidad)]
+mejor_esp  <- comp_05$Modelo[which.max(comp_05$Especificidad)]
+mejor_auc  <- comp_05$Modelo[which.max(comp_05$AUC)]
+mejor_sens_prev <- comp_prev$Modelo[which.max(comp_prev$Sensibilidad)]
+```
+
+- **¿Cuál tiene mejor exactitud?** `r mejor_acc` (Logit: `r percent(comp_05$Exactitud[1], accuracy = 0.1)`; KNN: `r percent(comp_05$Exactitud[2], accuracy = 0.1)`).
+- **¿Cuál detecta mejor los casos positivos (sensibilidad)?** `r mejor_sens` con umbral 0,5 (Logit: `r percent(comp_05$Sensibilidad[1], accuracy = 0.1)`; KNN: `r percent(comp_05$Sensibilidad[2], accuracy = 0.1)`). Con el umbral ajustado a la prevalencia, el mejor es `r mejor_sens_prev` (Logit: `r percent(comp_prev$Sensibilidad[1], accuracy = 0.1)`; KNN: `r percent(comp_prev$Sensibilidad[2], accuracy = 0.1)`).
+- **¿Cuál tiene mayor especificidad?** `r mejor_esp`.
+- **¿Cuál tiene mejor AUC?** `r mejor_auc` (Logit: `r round(auc_logit, 3)`; KNN: `r round(auc_knn, 3)`).
+
+### ¿Qué modelo se recomienda?
+
+Se recomienda el **Logit** como modelo principal por las siguientes razones, que se mantienen aunque las métricas de ambos modelos sean cercanas:
+
+1. **Interpretabilidad:** entrega coeficientes y *odds ratios* con intervalos de confianza y significancia, lo que permite explicar *por qué* un trabajador tiene mayor o menor probabilidad de superar el SMMLV. KNN es una "caja negra" sin parámetros interpretables.
+2. **Eficiencia:** una vez estimado, predecir es instantáneo; KNN debe guardar toda la muestra de entrenamiento y calcular distancias en cada predicción.
+3. **Estabilidad:** KNN depende de la escala de las variables y de la elección de *k*, y es sensible a las variables categóricas convertidas en *dummies*.
+
+Si el objetivo fuera únicamente **maximizar la detección** de quienes superan el mínimo, convendría comparar ambos modelos ajustando el umbral de decisión, ya que la tabla del umbral por prevalencia muestra cómo cambia el balance entre sensibilidad y especificidad.
+
+# Conclusiones
+
+1. **Ambos modelos discriminan razonablemente bien.** Con AUC de `r round(auc_logit, 3)` (Logit) y `r round(auc_knn, 3)` (KNN) y exactitudes de `r percent(comp_05$Exactitud[1], accuracy = 0.1)` y `r percent(comp_05$Exactitud[2], accuracy = 0.1)`, las variables laborales y educativas seleccionadas contienen información útil para saber si alguien supera el salario mínimo.
+2. **Las diferencias entre modelos son pequeñas.** El modelo con mejor AUC es `r mejor_auc`, pero la ganancia de un algoritmo más flexible como KNN es limitada frente a la sencillez y la interpretabilidad del Logit.
+3. **El tipo de empleado, las horas trabajadas y el nivel educativo son los principales determinantes.** Los empleados domésticos y los trabajadores por cuenta propia tienen menores probabilidades de superar el SMMLV; en cambio, más educación y más horas semanales las aumentan (ver *odds ratios*).
+4. **El umbral importa.** Con 0,5 los modelos son más específicos que sensibles porque la clase "Alto" es minoritaria; ajustar el umbral mejora la detección de casos positivos a costa de más falsos positivos.
+
+## Recomendaciones
+
+- **Política pública:** focalizar programas de formalización y formación en los grupos con menor probabilidad predicha de superar el SMMLV, en especial empleo doméstico y trabajo por cuenta propia.
+- **Uso del modelo:** emplear el Logit como herramienta de *scoring* y ajustar el umbral según el costo de equivocarse en cada dirección (por ejemplo, un umbral más bajo si se quiere no dejar por fuera a nadie en un programa de apoyo).
+- **Mejoras futuras:** incorporar sexo, área (urbano/rural), departamento, sector económico y afiliación a seguridad social; probar modelos de mayor capacidad (árboles, *random forest*, *gradient boosting*) y técnicas para clases desbalanceadas.
+
+## ¿Logró el modelo responder al objetivo de la investigación?
+
+**Sí, parcialmente.** El objetivo era determinar si es posible **clasificar a los trabajadores según superen o no el salario mínimo** a partir de sus características laborales y educativas. Los resultados muestran que sí es posible hacerlo con un desempeño bueno (AUC cercano a `r round(max(auc_logit, auc_knn), 2)`), y el Logit identifica qué variables pesan más en esa clasificación.
+
+Sin embargo, hay limitaciones que impiden hablar de un logro completo:
+
+- La **sensibilidad** con el umbral estándar es moderada: una parte importante de quienes superan el mínimo no es detectada.
+- Se **pierde información** al convertir el ingreso continuo en una variable binaria: quien gana $1.200.000 y quien gana $10.000.000 quedan en la misma clase.
+- El modelo es **predictivo, no causal**: las asociaciones encontradas no implican que, por ejemplo, trabajar más horas *cause* un mayor ingreso.
+- Faltan variables relevantes (sexo, región, sector, formalidad) y el ingreso autorreportado puede tener error de medición.
+
+Por lo tanto, el modelo es útil como **herramienta de clasificación y de caracterización**, pero para explicar causas o predecir montos de ingreso sería necesario ampliar las variables y usar otras técnicas (por ejemplo, regresión sobre el ingreso en logaritmos).
+
+# Bibliografía
+
+- Departamento Administrativo Nacional de Estadística (DANE). *Gran Encuesta Integrada de Hogares (GEIH)*. Microdatos. <https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata>
+- Presidencia de la República de Colombia (2022). *Decreto 2613 de 2022, por el cual se fija el salario mínimo mensual legal vigente para 2023.*
+- Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters, 27*(8), 861–874.
+- Hosmer, D. W., Lemeshow, S., & Sturdivant, R. X. (2013). *Applied Logistic Regression* (3.ª ed.). Wiley.
+- James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An Introduction to Statistical Learning with Applications in R* (2.ª ed.). Springer.
+- Kuhn, M. (2008). Building predictive models in R using the caret package. *Journal of Statistical Software, 28*(5), 1–26.
+- Robin, X., Turck, N., Hainard, A., et al. (2011). pROC: an open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics, 12*, 77.
+- Sievert, C. (2020). *Interactive Web-Based Data Visualization with R, plotly, and shiny.* Chapman & Hall/CRC.
+- Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis.* Springer.
+- Xie, Y., Allaire, J. J., & Grolemund, G. (2018). *R Markdown: The Definitive Guide.* Chapman & Hall/CRC.
+
+<div id="progreso"></div>
+<button id="arriba" title="Volver arriba" aria-label="Volver arriba">↑</button>
+
+<script>
+(function () {
+  var barra = document.getElementById("progreso");
+  var boton = document.getElementById("arriba");
+  function actualizar() {
+    var h = document.documentElement;
+    var max = h.scrollHeight - h.clientHeight;
+    barra.style.width = (max > 0 ? h.scrollTop / max * 100 : 0) + "%";
+    boton.classList.toggle("visible", h.scrollTop > 600);
+  }
+  window.addEventListener("scroll", actualizar, { passive: true });
+  boton.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  actualizar();
+})();
+</script>
+<script>
+(function () {
+  var titulos = Array.prototype.slice.call(
+    document.querySelectorAll(".main-container h1:not(.title)"));
+  if (!titulos.length) return;
+  var cont = document.createElement("div");
+  cont.id = "indice";
+  cont.innerHTML =
+    '<button id="indice-titulo" type="button">Contenido<span class="flecha">&#9662;</span></button>' +
+    '<div class="indice-barra"></div>' +
+    '<ul id="indice-lista"></ul>';
+  var lista = cont.querySelector("#indice-lista");
+  var enlaces = [];
+  titulos.forEach(function (h, i) {
+    var sec = h.parentElement && h.parentElement.id ? h.parentElement : h;
+    if (!sec.id) sec.id = "seccion-" + (i + 1);
+    var texto = h.textContent.trim().replace(/^\d+\.?\s*/, "");
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + sec.id;
+    a.innerHTML = '<span class="num">' + String(i + 1).padStart(2, "0") +
+                  '</span><span></span>';
+    a.lastChild.textContent = texto;
+    li.appendChild(a);
+    lista.appendChild(li);
+    enlaces.push(a);
+  });
+  var header = document.getElementById("header");
+  var main = document.querySelector(".main-container");
+  if (header && header.parentNode) {
+    header.parentNode.insertBefore(cont, header.nextSibling);
+  } else {
+    main.insertBefore(cont, main.firstChild);
+  }
+  cont.querySelector("#indice-titulo").addEventListener("click", function () {
+    cont.classList.toggle("cerrado");
+  });
+  function resaltar() {
+    var actual = 0;
+    titulos.forEach(function (h, i) {
+      if (h.getBoundingClientRect().top < 160) actual = i;
+    });
+    enlaces.forEach(function (a, i) {
+      a.classList.toggle("activo", i === actual);
+    });
+  }
+  window.addEventListener("scroll", resaltar, { passive: true });
+  resaltar();
+})();
+</script>

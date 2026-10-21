@@ -1,0 +1,369 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+:root {
+  --mauve: #dabfff;
+  --periwinkle: #907ad6;
+  --grape: #4f518c;
+  --indigo: #2c2a4a;
+  --lake: #7fdeff;
+
+  --bg: #fbf9ff;
+  --surface: #ffffff;
+  --tint: #f4edff;
+  --line: #e6dafa;
+  --muted: #6e6c9e;
+  --shadow: 0 10px 30px -12px rgba(79, 81, 140, 0.28);
+  --peso-negrita: 700;
+  --ancho-grafica: 70%; 
+  --fs: 1.5rem;
+  --fs-h1: 3rem;
+  --fs-h2: 2.25rem;
+  --fs-h3: 1.8rem;
+}
+html, body, body *:not(.glyphicon):not(.fa):not(.caret) {
+  font-family: 'Spectral', Georgia, 'Times New Roman', serif !important;
+  font-weight: 400 !important;
+}
+html { scroll-behavior: smooth; }
+body {
+  color: var(--indigo);
+  font-size: var(--fs) !important;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(900px 520px at 100% -8%, rgba(218, 191, 255, 0.38), transparent 60%),
+    radial-gradient(700px 520px at -8% 18%, rgba(127, 222, 255, 0.14), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+p, li, td, th, pre, code, blockquote, caption, figcaption,
+#indice, #indice a, .btn, h3.subtitle, h4.author, h4.date {
+  font-size: var(--fs) !important;
+}
+#indice, #indice li, #indice a { font-size: var(--fs) !important; }
+.main-container {
+  width: 70% !important;
+  max-width: 1900px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 0 20px 100px;
+}
+#header {
+  position: relative;
+  overflow: hidden;
+  margin: 32px 0 44px;
+  padding: 58px 52px 48px;
+  border-radius: 30px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--indigo) 0%, var(--grape) 48%, var(--periwinkle) 100%);
+  box-shadow: 0 24px 50px -24px rgba(44, 42, 74, 0.7);
+}
+#header::before {
+  content: "";
+  position: absolute; right: -90px; top: -110px;
+  width: 360px; height: 360px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, rgba(218, 191, 255, 0.6), rgba(218, 191, 255, 0) 70%);
+}
+#header::after {                       /* anillo azul hielo */
+  content: "";
+  position: absolute; right: 70px; bottom: -70px;
+  width: 210px; height: 210px; border-radius: 50%;
+  border: 2px solid rgba(127, 222, 255, 0.6);
+}
+#header > * { position: relative; z-index: 1; }
+
+h1.title {
+  color: #fff !important;
+  font-size: 3.5rem !important;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  padding: 0; border: 0;
+  display: block;
+}
+h1.title::before {                     /* sobretítulo */
+  content: "Análisis de modelos Logit y KNN";
+  display: block;
+  font-size: 1.1rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lake);
+  background: none; padding: 0; margin-bottom: 14px;
+}
+h1.title::after { display: none; }
+
+h3.subtitle { color: rgba(255,255,255,.92) !important; font-style: italic; margin: 0 0 18px; max-width: 34rem; }
+h4.author, h4.date { color: rgba(255,255,255,.82) !important; margin: 3px 0; }
+
+h1, h2, h3, h4 { color: var(--grape); letter-spacing: -0.005em; line-height: 1.25; }
+
+.main-container { counter-reset: seccion; }
+
+.main-container h1:not(.title) {
+  counter-increment: seccion;
+  font-size: var(--fs-h1) !important;
+  margin: 3.6rem 0 1.5rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--mauve);
+  display: flex; align-items: center; gap: 16px;
+}
+.main-container h1:not(.title)::before {   
+  content: counter(seccion, decimal-leading-zero);
+  font-size: 1rem;
+  color: var(--lake);
+  background: var(--indigo);
+  border-radius: 999px;
+  padding: 3px 14px;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+}
+
+h2 {
+  font-size: var(--fs-h2) !important;
+  margin: 2.6rem 0 1rem;
+  padding-left: 16px;
+  border-left: 5px solid var(--lake);
+  color: var(--indigo);
+}
+h3 {
+  font-size: var(--fs-h3) !important;
+  margin: 2rem 0 0.8rem;
+  color: var(--periwinkle);
+  font-style: italic;
+}
+
+/* ---------- Texto ---------- */
+p { margin: 0 0 1.15em; text-align: justify; hyphens: auto; }
+a { color: var(--grape); text-decoration: none; border-bottom: 1px solid var(--mauve); transition: all .15s; }
+a:hover { color: var(--periwinkle); border-bottom-color: var(--periwinkle); }
+
+body strong:not(.glyphicon):not(.fa):not(.caret),
+body b:not(.glyphicon):not(.fa):not(.caret) {   /* negritas: Spectral semi negrita, sin subrayado */
+  font-weight: var(--peso-negrita) !important;
+  color: var(--grape);
+  background: none;
+  padding: 0;
+}
+em, i { font-style: italic; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 2.5rem 0; }
+
+ul li::marker, ol li::marker { color: var(--periwinkle); }
+li { margin-bottom: 0.35em; }
+
+/* Notas / citas destacadas */
+blockquote {
+  border: 0;
+  border-left: 5px solid var(--lake);
+  background: linear-gradient(90deg, var(--tint), rgba(244, 237, 255, 0.3));
+  padding: 18px 26px;
+  margin: 1.8rem 0;
+  border-radius: 0 18px 18px 0;
+  color: var(--indigo);
+}
+blockquote p { text-align: left; }
+blockquote p:last-child { margin-bottom: 0; }
+
+div.section { scroll-margin-top: 24px; }
+
+/* ---------- Se oculta cualquier índice automático de R Markdown ---------- */
+#TOC, .tocify, .tocify-wrapper { display: none !important; }
+.main-container .row > div:has(> #TOC) { display: none !important; }
+.main-container .row > [class*="col-"], .toc-content {
+  float: none !important; width: 100% !important; max-width: 100% !important;
+  padding-left: 0 !important; padding-right: 0 !important;
+}
+div.section { scroll-margin-top: 24px; }
+
+/* ---------- CONTENIDO (tarjeta numerada de 2 columnas, bajo el encabezado) ---------- */
+#indice {
+  overflow: hidden;
+  background: var(--tint);
+  border-left: 5px solid var(--periwinkle);
+  border-radius: 0 20px 20px 0;
+  box-shadow: var(--shadow);
+  padding: 22px 44px 30px;
+  margin: 0 0 3.4rem;
+}
+#indice-titulo {                            /* clic para contraer / expandir */
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; background: none; border: 0; cursor: pointer;
+  padding: 6px 0;
+  color: var(--indigo);
+  font-size: var(--fs-h2);
+  text-align: left;
+}
+#indice-titulo:hover { color: var(--grape); }
+#indice-titulo .flecha { color: var(--periwinkle); font-size: 1.6rem; transition: transform .3s ease; }
+#indice.cerrado #indice-titulo .flecha { transform: rotate(-90deg); }
+.indice-barra { width: 48px; height: 3px; background: var(--lake); border-radius: 3px; margin: 6px 0 18px; }
+
+#indice-lista {
+  list-style: none; margin: 0; padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-auto-flow: row;
+  column-gap: 64px;
+  max-height: 1200px; overflow: hidden;
+  transition: max-height .4s ease, opacity .3s ease;
+}
+#indice.cerrado #indice-lista { max-height: 0; opacity: 0; }
+#indice.cerrado .indice-barra { margin-bottom: 0; }
+
+#indice li { margin: 0; list-style: none; border-bottom: 1px solid var(--mauve); overflow: hidden; }
+#indice a {
+  display: flex; align-items: baseline; gap: 16px;
+  padding: 14px 8px;
+  color: var(--indigo);
+  border: 0;
+  border-radius: 10px;
+  transition: background .15s ease, padding .15s ease, color .15s ease;
+}
+#indice a .num { color: var(--periwinkle); letter-spacing: 0.04em; }
+#indice a:hover { background: rgba(218, 191, 255, 0.35); padding-left: 16px; }
+#indice a.activo { background: linear-gradient(90deg, var(--mauve), rgba(218, 191, 255, 0.1)); }
+#indice a.activo .num { color: var(--grape); }
+
+/* ---------- Tablas ---------- */
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.8rem 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+table thead th {
+  background: var(--grape);
+  color: #fff;
+  border-bottom: 0 !important;
+  padding: 12px 10px !important;
+  text-align: left;
+}
+table td { padding: 10px !important; border-top: 1px solid var(--line) !important; }
+table tbody tr:nth-of-type(even) { background: #fbf8ff; }
+table tbody tr { transition: background .15s; }
+table tbody tr:hover { background: var(--tint); }
+
+/* ---------- Código ---------- */
+code { background: var(--tint); color: var(--grape); padding: 1px 6px; border-radius: 6px; }
+pre {
+  background: var(--tint);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--periwinkle);
+  border-radius: 14px;
+  padding: 16px 20px;
+  color: var(--indigo);
+  line-height: 1.55;
+}
+pre code { background: transparent; color: inherit; padding: 0; }
+pre:not(.r) { background: var(--surface); color: var(--muted); border-left-color: var(--lake); }
+
+/* Se quita el botón global "Code" del encabezado */
+#header .btn-group,
+.btn-group:has(> .dropdown-toggle) { display: none !important; }
+
+/* El botón "Show / Hide" queda DENTRO del contenido (no se corta en el borde) */
+.btn-group.pull-right, .btn-group.float-right {
+  float: none !important;
+  display: flex !important;
+  justify-content: flex-end;
+  width: 100%;
+  overflow: visible !important;
+  margin: 0 0 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+}
+button.code-folding-btn, .code-folding-btn {
+  float: none !important;
+  margin: 0 !important;
+}
+
+/* Botones "Show / Hide" de cada bloque de código */
+.btn-default.btn-xs, .code-folding-btn, .code-folding-btn .btn {
+  background: var(--surface);
+  border: 1px solid var(--mauve);
+  color: var(--grape);
+  border-radius: 999px;
+  box-shadow: none;
+  padding: 4px 20px;
+  line-height: 1.3;
+  transition: all .15s;
+}
+.btn-default.btn-xs, .btn-default.btn-xs *, .code-folding-btn, .code-folding-btn * {
+  font-size: 1.5rem !important;
+}
+.btn-default.btn-xs:hover, .code-folding-btn .btn:hover { background: var(--periwinkle); color: #fff; border-color: var(--periwinkle); }
+
+/* ---------- Sin deslizadores en el código (las líneas largas se ajustan) ---------- */
+pre, div.sourceCode, .hljs { overflow: hidden !important; }
+pre, pre code { white-space: pre-wrap !important; word-break: break-word; }
+
+/* ---------- Leyenda numerada (arriba) y Fuente (abajo) de gráficas y tablas ---------- */
+.leyenda, .fuente { margin-left: auto; margin-right: auto; text-align: center; max-width: 100%; }
+.leyenda p, .fuente p { text-align: center; margin: 0; }
+.graf { width: var(--ancho-grafica); min-width: 560px; }
+.tab  { width: 100%; }
+.leyenda { color: var(--grape); margin-top: 2.4rem; margin-bottom: -0.4rem; }
+.fuente  { color: var(--muted); font-style: italic; margin-top: -0.9rem; margin-bottom: 2.4rem; }
+
+/* ---------- Gráficos interactivos (tarjetas) ---------- */
+.plotly.html-widget, .html-widget {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--periwinkle);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 8px 6px 2px;
+  margin: 1.8rem auto !important;
+  width: var(--ancho-grafica) !important;   /* mitad del contenido (cámbialo arriba en :root) */
+  min-width: 560px;
+  max-width: 100%;
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+.plotly.html-widget:hover { box-shadow: 0 16px 36px -14px rgba(79, 81, 140, 0.4); transform: translateY(-2px); }
+.modebar-btn path { fill: var(--muted) !important; }
+.modebar-btn:hover path { fill: var(--grape) !important; }
+
+/* ---------- Tabla interactiva (reactable): ancho completo ---------- */
+.reactable.html-widget {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 0;
+  overflow: hidden;
+}
+.reactable.html-widget:hover { transform: none; }
+
+/* ---------- Barra de progreso y botón subir ---------- */
+#progreso {
+  position: fixed; top: 0; left: 0; height: 4px; width: 0; z-index: 9999;
+  background: linear-gradient(90deg, var(--lake), var(--periwinkle), var(--grape));
+}
+#arriba {
+  position: fixed; right: 28px; bottom: 28px; z-index: 9999;
+  width: 48px; height: 48px; border-radius: 50%; border: 0;
+  background: var(--indigo); color: var(--lake);
+  font-size: 1.4rem !important; line-height: 1; cursor: pointer;
+  box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none; transform: translateY(10px);
+  transition: all .25s ease;
+}
+#arriba.visible { opacity: 1; pointer-events: auto; transform: none; }
+#arriba:hover { background: var(--periwinkle); color: #fff; }
+
+::selection { background: var(--mauve); color: var(--indigo); }
+
+@media (max-width: 767px) {
+  :root { --fs: 1.15rem; --fs-h1: 2rem; --fs-h2: 1.6rem; --fs-h3: 1.35rem; }
+  #indice, #indice li, #indice a { font-size: 1.05rem !important; }
+  #indice { padding: 18px 22px 24px; }
+  #indice-lista { grid-template-columns: 1fr; }
+  .plotly.html-widget, .html-widget { width: 100% !important; min-width: 0 !important; }
+  .graf { width: 100%; min-width: 0; }
+  .btn-default.btn-xs, .btn-default.btn-xs *, .code-folding-btn, .code-folding-btn * { font-size: 1.1rem !important; }
+  #header { padding: 40px 26px 34px; border-radius: 22px; }
+  h1.title { font-size: 2.2rem !important; }
+  p { text-align: left; }
+}
