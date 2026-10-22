@@ -107,9 +107,17 @@ nota_alto   <- "Ingreso alto: superior al SMMLV de 2024 (\\$1.300.000)."
 nota_prueba <- "Métricas calculadas sobre la muestra de prueba (30 % de las observaciones)."
 ```
 
-# 1. Introducción
+# Introducción
 
-POR HACER 1
+Analizar el mercado laboral y los factores que determinan los ingresos salariales constituye un elemento clave para comprender la magnitud de la equidad socioeconómica y el desarrollo de un país; en Colombia el principal instrumento para evaluar dichas dinámicas es la **Gran Encuesta Integrada de Hogares (GEIH)**, realizada por el **Departamento Administrativo Nacional de Estadística (DANE)**, en esta encuesta continua a través de sus microdatos se recoge información sociodemográfica, educativa y laboral de los hogares del país, que permite estimar indicadores como la ocupación, el desempleo, la informalidad y los ingresos y hace que sea posible descomponer la realidad laboral individual para entender cómo interactúan las características personales y más condiciones de contratación en la generación de ingresos en una población.
+
+El ingreso laboral es la principal fuente de recursos de los hogares y suele estar asociada a factores sociodemográficos como la edad, el sexo y la educación; y laborales como las horas trabajadas, tipo de contrato, entre otros; que pueden o no contribuir a las brechas salariales existentes en el mercado laboral; donde la mayor parte del ingreso de concentra el salario mínimo y solo unos pocos reciben montos superiores a este. Con base en lo anterior, el presente trabajo se centra en el procesamiento técnico y análisis predictivo de **microdatos de la GEIH** correspondiente a **enero del 2024**. Tomando este periodo como punto de referencia aborda un problema fundamental y se plantea la siguiente pregunta de investigación:
+
+**¿En qué medida las condiciones laborales y las características sociodemográficas permiten clasificar con precisión a la población según su nivel de ingreso de acuerdo a los datos de la GEIH enero 2024?**
+
+Para dar respuesta a esta interrogante se propone un enfoque cuantitativo de clasificación binaria; tomando como variable dependiente binaria al ingreso laboral mensual de los individuos utilizando como umbral crítico el **Salario Mínimo Mensual Legal Vigente (SMMLV) de 2024** siendo este de **$1.300.000 COP**. Y como variables independientes explicativas el sexo, la edad al cuadrado, el nivel educativo, el tipo de empleado y las horas trabajadas. La investigación será realizada mediante la evaluación  y comparación del desempeño de dos algoritmos de naturaleza matemática: la Regresión Logística (Logit) y el K-Vecinos Más Cercanos (k-NN), a través de métricas de evaluación de clasificación (como precisión, sensibilidad, especificidad, y curvas ROC) este estudio busca aportar un diagnóstico riguroso sobre las brechas de ingresos en el inicio del año 2024, determinando simultáneamente qué metodología ofrece una mayor capacidad predictiva en el manejo de microdatos a gran escala.
+
+
 
 # Metodología
 
@@ -144,7 +152,7 @@ POR HACER 3
 | Edad `edad` | `P6040` | Numérica | Años cumplidos |
 | Edad al cuadrado `edad2` | `P6040` | Numérica | Años cumplidos elevados al cuadrado |
 | Zona de residencia `zona_f` | `CLASE` | Categórica | 1 = Urbano (cabecera), 2 = Rural (centros poblados y rural disperso) |
-| Nivel educativo `educ_f` | `P3042` | Categórica | 1–3 = Primaria o menos, 4–7 = Secundaria, 8–9 = Técnica/Tecnología, 10 = Universitaria, 11–13 = Posgrado |
+| Nivel educativo `educ_f` | `P3042` | Categórica | 1 = Primaria, 2 = Secundaria, 3 = Técnica/Tecnología, 4 = Universitaria, 5 = Posgrado |
 | Horas trabajadas `horas` | `P6800` | Numérica | Horas por semana |
 | Antigüedad `antig` | `P6426` | Numérica | Meses en el trabajo actual |
 | Tipo de empleado `tipo_emp` | `P6430` | Categórica | 1 = Empresa particular, 2 = Gobierno, 3 = Doméstico, 4 = Cuenta propia, 5 = Patrón o empleador, 6–9 = Otros (familiar sin pago, jornalero u otro) |
