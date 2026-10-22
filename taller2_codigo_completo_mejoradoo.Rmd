@@ -119,7 +119,7 @@ Para dar respuesta a esta interrogante se propone un enfoque cuantitativo de cla
 
 # Metodología
 
-## Variable dependiente
+## 2.1 Variable dependiente
 
 La variable dependiente se construyó a partir del ingreso laboral mensual `INGLABO` expresado en pesos colombianos, para el problema de clasificación esta se transforma en una variable binaria: se toma como referencia el SMMLV de $1.300.000 COP, donde si es mayor a este toma el valor 1 (Alto) y si es menor toma el valor 0 (Bajo).
 
@@ -138,18 +138,25 @@ Se utiliza el Salario Minimo Mensual Vigente del año 2024 por Decreto 2292 de 2
 `r fuente()`
 :::
 
-## Variables independientes
+## 2.3 Variables independientes
 
-**Sexo:** variable categórica que distingue entre hombre y mujer. Se incluye porque permite medir si, a igualdad de condiciones el sexo hace una diferencia en la remuneración laboral, debido a la evidencia de que existen brechas salariales de género persistentes en los mercados laborales, frecuentemente asociadas al cargo laboral, las horas remuneradas y la carga de trabajo no remunerado
+**Sexo:** variable categórica que distingue entre hombre y mujer, si categoría base es Hombre. Se incluye porque permite medir si, a igualdad de condiciones el sexo hace una diferencia en la remuneración laboral, debido a la evidencia de que existen brechas salariales de género persistentes en los mercados laborales, frecuentemente asociadas al cargo laboral, las horas remuneradas y la carga de trabajo no remunerado
 
-**Edad al cuadrado:** variable numérica que eleva al cuadrado la edad en años cumplidos, construida a partir de `P6040`. Se incorpora porque sirve como una aproximación de la experiencia laboral acumulada, dado que se asocia que los trabajadores de mayor edad suelen tener más experiencia acumulada y un mejor desempeño laboral que los trabajadores jóvenes; además de que se tiene una relación lineal, dado que el ingreso crece durante la vida laboral, se estabiliza y luego cae, así el término cuadrático permite capturar esa forma de U invertida.
+**Edad:** variable numérica que mide los años cumplidos de la persona, tomada de `P6040`. Se incluye como aproximación de la experiencia laboral debido que a mayor edad, mayor tiempo acumulado en el mercado y se pueden percibir mayores ingresos. Se complementa con la edad al cuadrado para capturar la forma de U invertida del ingreso a lo largo de la vida laboral.
 
-**Nivel educativo:** variable categórica de cinco niveles: Primaria, Secundaria, Bachiller, Técnica/Tecnología, Universitaria y Posgrado, construida a partir de `P3042`. Se selecciona porque una mayor formación académica suele asociarse con una alta especialización y esta a su vez da acceso a ocupaciones mejor remuneradas. Coincide con estudios sobre el retorno de la educación en Colombia que demuestran que frente a niveles de educación bajos la educación superior suele tener una remuneración laboral más alta.
+**Edad al cuadrado:** variable numérica que eleva al cuadrado la edad en años cumplidos, construida a partir de `P6040` y aparece calculada en la base como `Edad_Cuadrado`. Se incorpora porque sirve como una aproximación de la experiencia laboral acumulada, dado que se asocia que los trabajadores de mayor edad suelen tener más experiencia acumulada y un mejor desempeño laboral que los trabajadores jóvenes; además de que se tiene una relación lineal, dado que el ingreso crece durante la vida laboral, se estabiliza y luego cae, así el término cuadrático permite capturar esa forma de U invertida.
+
+**Nivel educativo:** variable categórica de cinco niveles: Primaria, Secundaria, Técnica/Tecnología, Universitaria y Postgrado, construida a partir de `P3042`. Se selecciona porque una mayor formación académica suele asociarse con una alta especialización y esta a su vez da acceso a ocupaciones mejor remuneradas. Coincide con estudios sobre el retorno de la educación en Colombia que demuestran que frente a niveles de educación bajos la educación superior suele tener una remuneración laboral más alta.
+
+**Estado civil:** variable categórica de seis grupos: unión libre menor a 2 años, unión libre de 2 años o más, casado, separado/divorciado, viudo y soltero, tomada de `P6070`. Se incluye porque la situación conyugal puede asociarse con la estabilidad laboral, la disponibilidad de tiempo y las decisiones de trabajo en el hogar.
+
+**Zona (urbano/rural):** variable categórica que distingue entre cabecera urbana y resto rural, tomada de `CLASE`. Se selecciona porque los mercados laborales urbanos y rurales difieren en oferta de empleo, productividad, acceso a educación y formalidad, lo que genera brechas de ingreso entre territorios.
 
 **Tipo de empleado:** variable categórica de seis grupos: empleado de empresa particular, empleado del gobierno, empleado doméstico, trabajador por cuenta propia, patrón o empleador y otros (trabajador sin pago, jornalero u otros), construida a partir de `P6430`. Se incorpora dado que el tipo de vinculación suele determinar la estabilidad, la protección social y el nivel de remuneración; en Colombia más de la mitad de la población trabaja en la informalidad por ello está variable resume diferencias en el mercado laboral que la educación no explica por sí sola.
 
 **Horas trabajadas a la semana:** variable numérica que representa el tiempo promedio o estipulado que una persona dedica a su jornada laboral, construida a partir de `P6800`. Se incluye porque se asocia que de la cantidad de tiempo trabajado depende la remuneración laboral recibida, sobre todo para aquellas personas que trabajan por tiempo o por servicios.
 
+**Antigüedad en el trabajo:** variable numérica que mide los meses que la persona lleva en su ocupación actual, tomada de `P6426`. Se Incorpora porque la permanencia en un mismo empleo suele reflejar experiencia específica, estabilidad y ascensos que elevan la remuneración.
 
 ::: {.leyenda .tab}
 `r cap_tab("Variables independientes: códigos del DANE, tipo y categorías")`
@@ -170,17 +177,23 @@ Se utiliza el Salario Minimo Mensual Vigente del año 2024 por Decreto 2292 de 2
 ::: {.fuente .tab}
 `r fuente()`
 :::
-## Contrucción, limpieza e integracion de la base de datos
+## 2.4 Contrucción, limpieza e integracion de la base de datos
 
+La base de construyó a partir de la selección de dos archivos de la GEIH, siendo **Características generales, seguridad social en salud y educación** el primero que contenía las variables sexo, edad, estado civil, zona (urbano/rural) y nivel educativo. Y **Ocupados** el segundo de donde se seleccionaron las variables ingreso laboral, tipo de empleado, antigüedad y horas semanales.
 
-## Depuración adicional
+Posteriormente, ambos archivos fueron integrados por medio de las variables identificadoras `DIRECTORIO`, `SECUENCIA_P` y `ORDEN`, permitiendo que las observaciones correspondientes a una misma persona pudieran ser relacionadas entre las dos bases de datos. De modo que se obtuvo una primera base consolidada con **70.648 observaciones** que contenía la información sociodemográfica y laboral necesaria para el estudio.
 
-Posteriormente a la base que ya venía depurada y contaba con **26.436 observaciones** y **12 columnas**, se conservan 10 de las 12 columnas, con nombres legibles: `INGLABO` pasa a ser `inglabo`, `P6040` pasa a ser `edad`, `P6426` pasa a ser `antig`, `P6800` pasa a ser `horas`, y así sucesivamente con las demás y se descartan` Y_ingreso` y `Nivel_educativo`, además de que el filtro de horas eliminó observaciones (28) que mostraban 100 horas semanales las cuales no son humanamente posibles.
+Después de la integración, se aplicaron algunos criterios de depuración que se consideraban acorde al objetivo del estudio. Del archivo de **ocupados** se conservaron únicamente las personas con **un tipo de empleo**, que **reportaron un ingreso laboral** y que este fuera **mayor a cero**, siendo eliminadas **41.833**, **1.235** y **218 observaciones** respectivamente.
 
-Luego se categorizado dos de las variables seleccionadas: `educ_f`: se agruparon los códigos de `P3042` en cinco niveles (Primaria, Secundaria, Técnica/Tecnología, Universitaria, Postgrado), dado que había categorías casi vacías como “Doctorado” que  tiene solo 65 casos, lo que puede volver inestables los modelos. Además a las variables numéricas `tipo_emp`, `sexo_f`, `zona_f`, `est_civil_f` se les convirtieron los códigos en factores con etiquetas, así R los trata como categorías y no como cantidades.
+Luego del archivo **Características generales, seguridad social en salud y educación** se seleccionaron las personas que tuvieran **18 años o más** y se excluyeron los niveles educativos **Ninguno**,  **Preescolar** y **Normalista** dado que había muy pocos datos sobre estos, eliminando **144** y 782 observaciones**  correspondientes; además se construyeron `Y ingreso` y `Nivel educativo`, por lo que luego de haber aplicado esta primera depuración se obtuvieron **26.436 observaciones** y **12 variables**.
 
-Y por último dado que la columna original `Y_ingreso` usaba 1.160.000 el salario mínimo de 2023, a la variable dependiente Y se le aplicó un filtro: es "Alto" si `inglabo` > 1.300.000 que corresponde salario mínimo de 2024 y "Bajo" en caso contrario, para que el umbral coincidiera con el año de los datos de la GEIH de enero de 2024.
+## 2.5 Depuración adicional
 
+Posteriormente a la base que anteriormente fue depurada y contaba con **26.436 observaciones** y **12 variables**, se conservaron 10 de las 12 variables, con nombres legibles: `INGLABO` pasa a ser `inglabo`, `P6040` pasa a ser `edad`, `P6426` pasa a ser `antig`, `P6800` pasa a ser `horas`, y así sucesivamente con las demás; luego se descartaron` Y_ingreso` y `Nivel_educativo`, además se aplicaron algunos filtros como la edad mínima de 15 años, antigüedad coherente con la edad y de horas trabajadas se eliminaron observaciones (28) que mostraban más de 100 horas semanales las cuales no son humanamente posibles.
+
+Luego las variables numéricas `tipo_emp`, `sexo_f`, `zona_f`, `est_civil_f` se convirtieron en factores con etiquetas de variables categóricas codificadas con números, así R los trata como categorías y no como cantidades. Posteriormente se agrupó el nivel educativo `educ_f` en cinco niveles (Primaria, Secundaria, Técnica/Tecnología, Universitaria, Postgrado), dado que había categorías casi vacías como “Doctorado” que  tiene solo 65 casos, lo que puede volver inestables los modelos. 
+
+Por último dado que la columna original `Y_ingreso` usaba **$1.160.000 COP** el salario mínimo de 2023, a la variable dependiente Y se le aplicó un filtro: es "Alto" si `inglabo` **> $1.300.000 COP** que corresponde salario mínimo de 2024 y "Bajo" en caso contrario, para que el umbral coincidiera con el año de los datos de la GEIH de enero de 2024. Finalmente la base quedó con **26.408 observaciones** y **16 variables**.
 
 ```{r datos}
 archivo <- "Base_GEIH_Taller2_limpia1.xlsx"
@@ -299,9 +312,9 @@ n_final <- nrow(datos)
 prev <- mean(datos$y == "Alto")
 ```
 
-## Base de datos
+## 2.6 Base de datos
 
-POR HACER 4 La base proviene de la GEIH publicada por el DANE ([microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata)). La versión entregada contiene **`r format(n_raw, big.mark = ".", decimal.mark = ",")` registros**; después de la depuración adicional quedan **`r format(n_final, big.mark = ".", decimal.mark = ",")`**.
+La base final cuenta con **26.408 observaciones** y **10 variables** de las cuales **8 son variables predictorias** y **2** en donde una sirve para construir la **variable dependiente**; los datos provienen de la GEIH de enero de 2024 publicada por el DANE ([microdatos.dane.gov.co](https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata)). 
 
 ```{r prep-tabla, include=FALSE}
 tabla_base <- datos %>%
@@ -318,8 +331,6 @@ tabla_base <- datos %>%
     `Clase de ingreso`   = y
   )
 ```
-
-POR HACER 5 La base depurada tiene **`r format(n_final, big.mark = ".", decimal.mark = ",")` observaciones** y **`r ncol(tabla_base)` variables**, correspondientes a trabajadores ocupados con ingreso laboral positivo. Los códigos originales del DANE se reemplazaron por los nombres de sus categorías (por ejemplo, `P3271 = 1` aparece como "Hombre"). La tabla permite filtrar por columna, cambiar el número de filas por página y navegar entre páginas.
 
 ::: {.leyenda .tab}
 `r cap_tab("Base de datos depurada utilizada en el estudio")`
@@ -3409,6 +3420,9 @@ Por lo tanto, el modelo es útil como **herramienta de clasificación y de carac
 
 - Departamento Administrativo Nacional de Estadística (DANE). *Gran Encuesta Integrada de Hogares (GEIH)*. Microdatos. <https://microdatos.dane.gov.co/index.php/catalog/819/get-microdata>
 - Presidencia de la República de Colombia (2022). *Decreto 2613 de 2022, por el cual se fija el salario mínimo mensual legal vigente para 2023.*
+- Arango, L. E., Escobar, D. C., & Monsalve, E. (2013). Subempleo por ingresos y funcionamiento del mercado de trabajo en Colombia (Borradores de Economía No. 764). Banco de la República. <https://banrep.gov.co/es/borrador-764>
+- Rúa Ramírez, M., & Rivera Duque, E. (2019). Análisis regional de los efectos de la educación y la experiencia en los salarios de Colombia [Trabajo de grado, Universidad EAFIT]. Repositorio Institucional Universidad EAFIT. <https://repository.eafit.edu.co/server/api/core/bitstreams/f84ba76f-eebc-431f-9463-86dfb49173fe/content>
+- Becker, G. S. (1964). Human Capital: A Theoretical and Empirical Analysis, with Special Reference to Education. National Bureau of Economic Research (NBER) / Columbia University Press.
 - Fawcett, T. (2006). An introduction to ROC analysis. *Pattern Recognition Letters, 27*(8), 861–874.
 - Hosmer, D. W., Lemeshow, S., & Sturdivant, R. X. (2013). *Applied Logistic Regression* (3.ª ed.). Wiley.
 - James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An Introduction to Statistical Learning with Applications in R* (2.ª ed.). Springer.
