@@ -117,12 +117,13 @@ El ingreso laboral es la principal fuente de recursos de los hogares y suele est
 
 Para dar respuesta a esta interrogante se propone un enfoque cuantitativo de clasificación binaria; tomando como variable dependiente binaria al ingreso laboral mensual de los individuos utilizando como umbral crítico el **Salario Mínimo Mensual Legal Vigente (SMMLV) de 2024** siendo este de **$1.300.000 COP**. Y como variables independientes explicativas el sexo, la edad al cuadrado, el nivel educativo, el tipo de empleado y las horas trabajadas. La investigación será realizada mediante la evaluación  y comparación del desempeño de dos algoritmos de naturaleza matemática: la Regresión Logística (Logit) y el K-Vecinos Más Cercanos (k-NN), a través de métricas de evaluación de clasificación (como precisión, sensibilidad, especificidad, y curvas ROC) este estudio busca aportar un diagnóstico riguroso sobre las brechas de ingresos en el inicio del año 2024, determinando simultáneamente qué metodología ofrece una mayor capacidad predictiva en el manejo de microdatos a gran escala.
 
-
 # Metodología
 
 ## Variable dependiente
 
-POR HACER 2 Para el periodo de Enero de 2024, el SMMLV oficial fijado por el Gobierno Nacional es de **\$1.300.000** COP (Decreto 2292 de 2023). Se fija la categoría "Alto" como clase positiva, de modo que la Sensibilidad mide la capacidad de los modelos para identificar correctamente a los trabajadores que superan el salario mínimo.
+La variable dependiente se construyó a partir del ingreso laboral mensual `INGLABO` expresado en pesos colombianos, para el problema de clasificación esta se transforma en una variable binaria: se toma como referencia el SMMLV de $1.300.000 COP, donde si es mayor a este toma el valor 1 (Alto) y si es menor toma el valor 0 (Bajo).
+
+Se utiliza el Salario Minimo Mensual Vigente del año 2024 por Decreto 2292 de 2023, que es la referencia legal y de política pública para evaluar sin un trabajador alcanza el nivel de remuneración suficiente. Dado que el ingreso continuo tiende a ser asimétrico el convertirlo en una variable binaria puede prevenir futuros errores en los modelos.
 
 ::: {.leyenda .tab}
 `r cap_tab("Definición de la variable dependiente")`
@@ -139,7 +140,16 @@ POR HACER 2 Para el periodo de Enero de 2024, el SMMLV oficial fijado por el Gob
 
 ## Variables independientes
 
-POR HACER 3
+**Sexo:** variable categórica que distingue entre hombre y mujer. Se incluye porque permite medir si, a igualdad de condiciones el sexo hace una diferencia en la remuneración laboral, debido a la evidencia de que existen brechas salariales de género persistentes en los mercados laborales, frecuentemente asociadas al cargo laboral, las horas remuneradas y la carga de trabajo no remunerado
+
+**Edad al cuadrado:** variable numérica que eleva al cuadrado la edad en años cumplidos, construida a partir de `P6040`. Se incorpora porque sirve como una aproximación de la experiencia laboral acumulada, dado que se asocia que los trabajadores de mayor edad suelen tener más experiencia acumulada y un mejor desempeño laboral que los trabajadores jóvenes; además de que se tiene una relación lineal, dado que el ingreso crece durante la vida laboral, se estabiliza y luego cae, así el término cuadrático permite capturar esa forma de U invertida.
+
+**Nivel educativo:** variable categórica de cinco niveles: Primaria, Secundaria, Bachiller, Técnica/Tecnología, Universitaria y Posgrado, construida a partir de `P3042`. Se selecciona porque una mayor formación académica suele asociarse con una alta especialización y esta a su vez da acceso a ocupaciones mejor remuneradas. Coincide con estudios sobre el retorno de la educación en Colombia que demuestran que frente a niveles de educación bajos la educación superior suele tener una remuneración laboral más alta.
+
+**Tipo de empleado:** variable categórica de seis grupos: empleado de empresa particular, empleado del gobierno, empleado doméstico, trabajador por cuenta propia, patrón o empleador y otros (trabajador sin pago, jornalero u otros), construida a partir de `P6430`. Se incorpora dado que el tipo de vinculación suele determinar la estabilidad, la protección social y el nivel de remuneración; en Colombia más de la mitad de la población trabaja en la informalidad por ello está variable resume diferencias en el mercado laboral que la educación no explica por sí sola.
+
+**Horas trabajadas a la semana:** variable numérica que representa el tiempo promedio o estipulado que una persona dedica a su jornada laboral, construida a partir de `P6800`. Se incluye porque se asocia que de la cantidad de tiempo trabajado depende la remuneración laboral recibida, sobre todo para aquellas personas que trabajan por tiempo o por servicios.
+
 
 ::: {.leyenda .tab}
 `r cap_tab("Variables independientes: códigos del DANE, tipo y categorías")`
@@ -160,8 +170,17 @@ POR HACER 3
 ::: {.fuente .tab}
 `r fuente()`
 :::
+## Contrucción, limpieza e integracion de la base de datos
+
 
 ## Depuración adicional
+
+Posteriormente a la base que ya venía depurada y contaba con **26.436 observaciones** y **12 columnas**, se conservan 10 de las 12 columnas, con nombres legibles: `INGLABO` pasa a ser `inglabo`, `P6040` pasa a ser `edad`, `P6426` pasa a ser `antig`, `P6800` pasa a ser `horas`, y así sucesivamente con las demás y se descartan` Y_ingreso` y `Nivel_educativo`, además de que el filtro de horas eliminó observaciones (28) que mostraban 100 horas semanales las cuales no son humanamente posibles.
+
+Luego se categorizado dos de las variables seleccionadas: `educ_f`: se agruparon los códigos de `P3042` en cinco niveles (Primaria, Secundaria, Técnica/Tecnología, Universitaria, Postgrado), dado que había categorías casi vacías como “Doctorado” que  tiene solo 65 casos, lo que puede volver inestables los modelos. Además a las variables numéricas `tipo_emp`, `sexo_f`, `zona_f`, `est_civil_f` se les convirtieron los códigos en factores con etiquetas, así R los trata como categorías y no como cantidades.
+
+Y por último dado que la columna original `Y_ingreso` usaba 1.160.000 el salario mínimo de 2023, a la variable dependiente Y se le aplicó un filtro: es "Alto" si `inglabo` > 1.300.000 que corresponde salario mínimo de 2024 y "Bajo" en caso contrario, para que el umbral coincidiera con el año de los datos de la GEIH de enero de 2024.
+
 
 ```{r datos}
 archivo <- "Base_GEIH_Taller2_limpia1.xlsx"
