@@ -15,10 +15,10 @@
   --shadow: 0 10px 30px -12px rgba(79, 81, 140, 0.28);
   --peso-negrita: 700;
   --ancho-grafica: 70%; 
-  --fs: 1.5rem;
+  --fs: 1.6rem;
   --fs-h1: 3rem;
   --fs-h2: 2.25rem;
-  --fs-h3: 1.8rem;
+  --fs-h3: 2.2rem;
 }
 html, body, body *:not(.glyphicon):not(.fa):not(.caret) {
   font-family: 'Spectral', Georgia, 'Times New Roman', serif !important;
@@ -138,7 +138,7 @@ a { color: var(--grape); text-decoration: none; border-bottom: 1px solid var(--m
 a:hover { color: var(--periwinkle); border-bottom-color: var(--periwinkle); }
 
 body strong:not(.glyphicon):not(.fa):not(.caret),
-body b:not(.glyphicon):not(.fa):not(.caret) {   /* negritas: Spectral semi negrita, sin subrayado */
+body b:not(.glyphicon):not(.fa):not(.caret) { 
   font-weight: var(--peso-negrita) !important;
   color: var(--grape);
   background: none;
@@ -184,7 +184,7 @@ div.section { scroll-margin-top: 24px; }
   padding: 22px 44px 30px;
   margin: 0 0 3.4rem;
 }
-#indice-titulo {                            /* clic para contraer / expandir */
+#indice-titulo {                          
   display: flex; align-items: center; justify-content: space-between;
   width: 100%; background: none; border: 0; cursor: pointer;
   padding: 6px 0;
@@ -261,7 +261,6 @@ pre {
 pre code { background: transparent; color: inherit; padding: 0; }
 pre:not(.r) { background: var(--surface); color: var(--muted); border-left-color: var(--lake); }
 
-/* Se quita el botón global "Code" del encabezado */
 #header .btn-group,
 .btn-group:has(> .dropdown-toggle) { display: none !important; }
 
@@ -297,7 +296,6 @@ button.code-folding-btn, .code-folding-btn {
 }
 .btn-default.btn-xs:hover, .code-folding-btn .btn:hover { background: var(--periwinkle); color: #fff; border-color: var(--periwinkle); }
 
-/* ---------- Sin deslizadores en el código (las líneas largas se ajustan) ---------- */
 pre, div.sourceCode, .hljs { overflow: hidden !important; }
 pre, pre code { white-space: pre-wrap !important; word-break: break-word; }
 
@@ -318,7 +316,7 @@ pre, pre code { white-space: pre-wrap !important; word-break: break-word; }
   box-shadow: var(--shadow);
   padding: 8px 6px 2px;
   margin: 1.8rem auto !important;
-  width: var(--ancho-grafica) !important;   /* mitad del contenido (cámbialo arriba en :root) */
+  width: var(--ancho-grafica) !important;
   min-width: 560px;
   max-width: 100%;
   transition: box-shadow .2s ease, transform .2s ease;
@@ -327,7 +325,6 @@ pre, pre code { white-space: pre-wrap !important; word-break: break-word; }
 .modebar-btn path { fill: var(--muted) !important; }
 .modebar-btn:hover path { fill: var(--grape) !important; }
 
-/* ---------- Tabla interactiva (reactable): ancho completo ---------- */
 .reactable.html-widget {
   width: 100% !important;
   min-width: 0 !important;
@@ -336,7 +333,6 @@ pre, pre code { white-space: pre-wrap !important; word-break: break-word; }
 }
 .reactable.html-widget:hover { transform: none; }
 
-/* ---------- Barra de progreso y botón subir ---------- */
 #progreso {
   position: fixed; top: 0; left: 0; height: 4px; width: 0; z-index: 9999;
   background: linear-gradient(90deg, var(--lake), var(--periwinkle), var(--grape));

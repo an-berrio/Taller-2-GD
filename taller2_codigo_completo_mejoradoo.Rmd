@@ -118,7 +118,6 @@ El ingreso laboral es la principal fuente de recursos de los hogares y suele est
 Para dar respuesta a esta interrogante se propone un enfoque cuantitativo de clasificación binaria; tomando como variable dependiente binaria al ingreso laboral mensual de los individuos utilizando como umbral crítico el **Salario Mínimo Mensual Legal Vigente (SMMLV) de 2024** siendo este de **$1.300.000 COP**. Y como variables independientes explicativas el sexo, la edad al cuadrado, el nivel educativo, el tipo de empleado y las horas trabajadas. La investigación será realizada mediante la evaluación  y comparación del desempeño de dos algoritmos de naturaleza matemática: la Regresión Logística (Logit) y el K-Vecinos Más Cercanos (k-NN), a través de métricas de evaluación de clasificación (como precisión, sensibilidad, especificidad, y curvas ROC) este estudio busca aportar un diagnóstico riguroso sobre las brechas de ingresos en el inicio del año 2024, determinando simultáneamente qué metodología ofrece una mayor capacidad predictiva en el manejo de microdatos a gran escala.
 
 
-
 # Metodología
 
 ## Variable dependiente
