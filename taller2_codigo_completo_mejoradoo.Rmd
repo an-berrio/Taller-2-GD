@@ -344,7 +344,9 @@ reactable(
 
 # Resultados Descriptivos
 
-## Estadísticas descriptivas del ingreso laboral mensual
+## Análisis descriptivo de la variable dependiente
+
+### Indicadores estadísticos del ingreso laboral mensual
 
 ::: {.leyenda .tab}
 `r cap_tab("Estadísticas descriptivas del ingreso laboral mensual (COP)")`
@@ -380,13 +382,13 @@ DT::datatable(
 `r fuente()`
 :::
 
-## Análisis descriptivo de la variable dependiente
+### Análisis gráfico y distribución de la variable dependiente
 
 ::: {.leyenda .tab}
 `r cap_tab("Distribución de los trabajadores según nivel de ingreso laboral")`
 :::
 
-```{r TABLA1_DISTRIBUCION_VARIABLE_Y}
+```{r TABLA_DISTRIBUCION_VARIABLE_Y}
 tabla_y <- datos %>%
   count(y, name = "Trabajadores") %>%
   mutate(
@@ -438,7 +440,7 @@ DT::datatable(
 `r cap_gra("Proporción de trabajadores según nivel de ingreso laboral")`
 :::
 
-```{r GRAFICO1_NIVEL_DE_INGRESO}
+```{r GRAFICO_NIVEL_DE_INGRESO}
 datos_y <- datos %>%
   count(y, name = "Trabajadores") %>%
   mutate(
@@ -557,7 +559,7 @@ grafico_y
 `r cap_gra("Distribución del ingreso laboral mensual (hasta $5.000.000)")`
 :::
 
-```{r GRAFICO2}
+```{r GRAFICO}
 limite_visual <- 5000000
 tam_bin <- 100000
 
@@ -657,16 +659,16 @@ grafico_ingreso
 ::: {.fuente .tab}
 `r fuente("La línea punteada marca el salario mínimo de \\$1.300.000; se omiten los ingresos superiores a \\$5.000.000 solo para la visualización.")`
 :::
+## Análisis descriptivo de las variables independientes
 
-## Variables numéricas
+### Indicadores estadísticos de las variables independientes cuantitativas
 
 ::: {.leyenda .tab}
 `r cap_tab("Estadísticas descriptivas de las variables cuantitativas")`
 :::
 
-```{r TABLA2_VARIABLES_CUANTITATIVAS}
+```{r TABLA_VARIABLES_CUANTITATIVAS}
 columnas <- c(
-  "inglabo",
   "edad",
   "edad2",
   "antig",
@@ -674,7 +676,6 @@ columnas <- c(
 )
 
 etiquetas <- c(
-  "Ingreso laboral (COP)",
   "Edad (a\u00f1os)",
   "Edad al cuadrado",
   "Antig\u00fcedad laboral (meses)",
@@ -714,7 +715,7 @@ for (j in 2:ncol(tabla_cuantitativas)) {
     seq_len(nrow(tabla_cuantitativas)),
     function(i) {
 
-      decimales <- if (i == 1) 0 else 1
+decimales <- 1
 
       formatC(
         tabla_cuantitativas[[j]][i],
@@ -756,7 +757,7 @@ DT::datatable(
 `r fuente()`
 :::
 
-### Distribución de las variables numéricas
+### Análisis gráfico y distribución de las variables independientes cuantitativas
 
 ```{r funcion-histograma}
 histograma_var <- function(x, titulo_x, ancho) {
@@ -853,7 +854,7 @@ histograma_var(datos$horas, "Horas trabajadas por semana", 5)
 `r fuente()`
 :::
 
-### Matriz de correlación
+### Matriz de correlación entre las variables cuantitativas
 
 ::: {.leyenda .tab}
 `r cap_gra("Matriz de correlación de Pearson entre las variables numéricas")`
@@ -893,7 +894,7 @@ ggplot(cor_long, aes(Var1, Var2, fill = r)) +
 `r fuente("Edad y edad al cuadrado están casi perfectamente correlacionadas por construcción.")`
 :::
 
-## Relación con el ingreso laboral
+## Análisis bivariado y asociación con la variable dependiente
 
 ### Distribución por grupos de edad
 
@@ -1379,7 +1380,7 @@ grafico_horas_g5
 `r fuente(paste(nota_alto, "El rombo indica la media."))`
 :::
 
-## Variables categóricas
+## Análisis univariado de variables categóricas
 
 ```{r preparacion_tablas_categoricas}
 resumen_cat_desc <- function(x) {
@@ -1711,12 +1712,13 @@ grafico_educ_g6 <- plotly::plot_ly() %>%
     plot_bgcolor = "white",
     paper_bgcolor = "white",
 
-    margin = list(
-      l = 180,
-      r = 35,
-      t = 30,
-      b = 125
-    ),
+
+margin = list(
+  l = 155,
+  r = 135,
+  t = 30,
+  b = 110
+),
 
     separators = ",.",
 
@@ -1961,7 +1963,8 @@ grafico_tipo_g7 <- plotly::plot_ly() %>%
       categoryorder = "array",
       categoryarray = rev(orden_tipo_g7),
       showgrid = FALSE,
-      tickfont = list(size = 11)
+      tickfont = list(size = 11),
+      automargin = TRUE
     ),
 
     legend = list(
@@ -1977,12 +1980,12 @@ grafico_tipo_g7 <- plotly::plot_ly() %>%
     plot_bgcolor = "white",
     paper_bgcolor = "white",
 
-    margin = list(
-      l = 270,
-      r = 35,
-      t = 30,
-      b = 125
-    ),
+margin = list(
+  l = 190,
+  r = 110,
+  t = 30,
+  b = 115
+),
 
     separators = ",.",
 
@@ -2720,7 +2723,8 @@ grafico_estado_g10 <- plotly::plot_ly() %>%
       categoryorder = "array",
       categoryarray = rev(orden_estado_g10),
       showgrid = FALSE,
-      tickfont = list(size = 11)
+      tickfont = list(size = 11),
+      automargin = TRUE
     ),
 
     legend = list(
@@ -2736,12 +2740,12 @@ grafico_estado_g10 <- plotly::plot_ly() %>%
     plot_bgcolor = "white",
     paper_bgcolor = "white",
 
-    margin = list(
-      l = 235,
-      r = 35,
-      t = 30,
-      b = 125
-    ),
+margin = list(
+  l = 170,
+  r = 110,
+  t = 30,
+  b = 115
+),
 
     separators = ",.",
 
@@ -2912,18 +2916,74 @@ acc_opt     <- max(res_class$Exactitud)
 
 ```{r g-knn-class}
 res_class <- res_class %>%
-  mutate(tooltip = paste0("k = ", k, "<br>Exactitud (CV): ", round(Exactitud, 4)))
+  mutate(
+    tooltip = paste0(
+      "k = ", k,
+      "<br>Exactitud (CV): ", round(Exactitud, 4)
+    )
+  )
 
-p_acc <- ggplot(res_class, aes(k, Exactitud, text = tooltip, group = 1)) +
-  geom_line(colour = pal[["lake"]], linewidth = 0.8) +
-  geom_point(colour = pal[["lake"]], size = 1.6) +
-  geom_vline(xintercept = k_opt_class, linetype = "dashed", colour = pal[["indigo"]]) +
-  geom_point(data = filter(res_class, k == k_opt_class),
-             colour = pal[["periwinkle"]], size = 4) +
-  labs(x = "Número de vecinos (k)", y = "Exactitud promedio en validación cruzada")
+p_acc <- ggplot(
+  res_class,
+  aes(k, Exactitud, text = tooltip, group = 1)
+) +
+  geom_line(
+    colour = pal[["lake"]],
+    linewidth = 0.8
+  ) +
+  geom_point(
+    colour = pal[["lake"]],
+    size = 1.6
+  ) +
+  geom_vline(
+    xintercept = k_opt_class,
+    linetype = "dashed",
+    colour = pal[["indigo"]]
+  ) +
+  geom_point(
+    data = filter(res_class, k == k_opt_class),
+    colour = pal[["periwinkle"]],
+    size = 4
+  ) +
+  labs(
+    x = "Número de vecinos (k)",
+    y = "Exactitud promedio en validación cruzada"
+  )
+grafico_knn <- interactivo(
+  p_acc,
+  tooltip = "text"
+) %>%
+  plotly::layout(
+    height = 460,
 
-interactivo(p_acc, tooltip = "text")
+    margin = list(
+      l = 115,
+      r = 35,
+      t = 30,
+      b = 95
+    ),
+
+    xaxis = list(
+      title = list(
+        text = "Número de vecinos (k)",
+        standoff = 18
+      ),
+      automargin = TRUE
+    ),
+
+    yaxis = list(
+      title = list(
+        text = "Exactitud promedio en validación cruzada",
+        standoff = 15
+      ),
+      automargin = TRUE
+    )
+  )
+
+grafico_knn
+
 ```
+
 
 ::: {.fuente .tab}
 `r fuente(paste0("Validación cruzada estratificada de 5 particiones sobre la muestra de entrenamiento, con k impar de 1 a 101. La línea punteada marca el k óptimo (k = ", k_opt_class, ")."))`
@@ -3001,7 +3061,7 @@ or_df <- tibble(
     Significancia = if_else(p < 0.05, "p < 0,05", "p ≥ 0,05")
   )
 
-ggplot(or_df, aes(OR, Término, colour = Significancia)) +
+p_or <- ggplot(or_df, aes(OR, Término, colour = Significancia)) +
   geom_vline(xintercept = 1, linetype = "dashed", colour = pal[["indigo"]]) +
   geom_linerange(aes(xmin = inf, xmax = sup), linewidth = 0.9) +
   geom_point(size = 2.6) +
@@ -3011,6 +3071,24 @@ ggplot(or_df, aes(OR, Término, colour = Significancia)) +
   labs(x = "Odds ratio (escala logarítmica)", y = NULL) +
   theme(panel.grid.major.x = element_line(colour = "#ece4fb"),
         panel.grid.major.y = element_blank())
+
+plotly::ggplotly(p_or, tooltip = "all", height = 900) %>%
+  plotly::layout(
+    autosize = TRUE,
+    margin = list(l = 260, r = 40, t = 30, b = 110),
+    yaxis = list(automargin = TRUE),
+    xaxis = list(automargin = TRUE),
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      xanchor = "center",
+      y = -0.10
+    )
+  ) %>%
+  plotly::config(
+    displaylogo = FALSE,
+    responsive = TRUE
+  )
 ```
 
 ::: {.fuente .tab}
@@ -3134,7 +3212,7 @@ interactivo(g_umbral_knn, leyenda_abajo = TRUE)
 `r fuente(paste(nota_prueba, "La línea punteada marca el umbral de Youden."))`
 :::
 
-## Comparación de modelos
+# Comparación de modelos
 
 ::: {.leyenda .tab}
 `r cap_tab("Comparación del desempeño de los modelos Logit y KNN con umbral de 0,50")`
